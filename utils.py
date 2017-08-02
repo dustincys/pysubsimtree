@@ -30,7 +30,7 @@ def compute_range(ref):
                 start = start - 20
             if not end + 20 >= len(ref[chrom][0]):
                 end = end + 20
-            item_range = np.arrange(start, end)
+            item_range = np.arange(start, end)
             avai_range = np.delete(avai_range, item_range)
 
         ref_range[chrom] = avai_range

@@ -19,10 +19,18 @@ def main():
             dest="config",
             help="config file",
             metavar="FILE")
+        parser.add_option(
+            "-p",
+            "--prefix",
+            dest="prefix",
+            help="prefix file",
+            metavar="FILE")
         (opts, args) = parser.parse_args()
         if opts.config is None:
                 parser.print_help()
         else:
+                out_prex = opts.prefix
+
                 cf = ConfigParser.ConfigParser()
                 cf.read(opts.config)
 
@@ -31,7 +39,6 @@ def main():
                 dbsnp = cf.get("pysim_settings", "dbsnp")
                 germline_num = cf.getint("pysim_settings", "germline_num")
                 hyp_rate = cf.getfloat("pysim_settings", 'hyp_rate')
-                out_prex = cf.get("pysim_settings", "out_prex")
                 chrome_can = cf.get("pysim_settings", "chrome")
                 pf_file_name = cf.get("pysim_settings",
                                       "population_fraction_config_file")
