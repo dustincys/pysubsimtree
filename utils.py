@@ -72,29 +72,31 @@ def reference(ref_name):
     ref_dic = {}
     chr_name = ''
     tmp_str = ''
+
     for line in open(ref_name):
-        newline = line.rstrip()
+        newline = line.strip()
+
         if newline.startswith('>'):
             if '_' in newline:
                 chr_split = newline.split('_')
-            elif '-' in newline:
-                chr_split = newline.split('-')
             else:
                 chr_split = [newline]
+
             if chr_name != '':
                 if chr_name not in ref_dic:
-                    ref_dic[chr_name] = [tmp_str]
+                    ref_dic[chr_name] = {"P0": tmp_str}
                 else:
-                    # 此处是含有paternal 和 maternal
-                    ref_dic[chr_name].append(tmp_str)
+                    ref_dic[chr_name]["M0"] = tmp_str
+
             chr_name = chr_split[0].split('>')[1]
             tmp_str = ''
         else:
             tmp_str = tmp_str+newline
+
     if chr_name not in ref_dic:
-        ref_dic[chr_name] = [tmp_str]
+        ref_dic[chr_name] = {"P0": tmp_str}
     else:
-        ref_dic[chr_name].append(tmp_str)
+        ref_dic[chr_name]["M0"] = tmp_str
     return ref_dic
 
 
@@ -228,4 +230,3 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
         ref_dic[key] = tmp_str
     outfile.close()
     return [ref_dic, snp_list]
-
