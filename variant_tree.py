@@ -16,23 +16,35 @@
 from breakpoint import BreakPoints
 from genome_range import GenomeRange
 
-from utils import outputFa
+from utils.utils import outputFa
 
 from anytree import NodeMixin
+
 import copy
+from collection import Counter
+
+
+variantNodeType = ["SV", "SNV", "PLOIDY"]
 
 
 class VariantNode(NodeMixin):
-    def __init__(self, name, parent=None):
+    def __init__(self, name, ref, ploidy_type, parent=None, variant_type="SV"):
+        assert variant_type in variantNodeType
+
         self.name = name
         self.parent = parent
-        self.sv_list = []
+        # 用来传递生成ＳＮＶ
+        self.ref = ref
 
-        # 变异位置
+        self.variant_type = variant_type
+
+        self.variant_list = []
+
+        # generate ploidy reference
+        self.ploidy_status = {}
+
         self.sv_positions = None
-        # 断点位置和信息
         self.breakpoints = None
-        # 可用位置
         self.avail_position = None
 
     def outputRef(self, ref, outfilePrefix):
@@ -42,11 +54,11 @@ class VariantNode(NodeMixin):
     def outputVartPosi(self, outfilePrefix):
         # self.sv_positions[chroms[k]].append([
         # pois,
-        # self.sv_list[i][0],
-        # self.sv_list[i][1],
-        # self.sv_list[i][2],
-        # self.sv_list[i][-1]])
-        # temp_Node.sv_list.append(
+        # self.variant_list[i][0],
+        # self.variant_list[i][1],
+        # self.variant_list[i][2],
+        # self.variant_list[i][-1]])
+        # temp_Node.variant_list.append(
         # [variant_length, variant_copy_number,
         # variant_genotype, variant_name])
         outfileName = outfilePrefix+self.name+".SV.txt"
@@ -68,55 +80,106 @@ class VariantNode(NodeMixin):
         pass
 
     def make(self, ref):
-        """生成变异
+        """generate variats
         :returns: TODO
 
         """
-        # 获取父节点中可用空间
-        self.avail_position = self._getPrtAvailPst(ref)
-        # 获取父节点中变异位置
-        self.sv_positions = self._getPrtSVPosis()
-        # 获取父节点中breakpoint位置
-        self.breakpoints = self._getPrtBreakpoints()
+        # 首先初始化节点, 即从父节点继承信息
+        self._init_node()
 
-        # 生成当前节点的变异位置，将所有变异位置写入self.sv_positions，返回当前节点的变异位置
+        # 第一步，生成ploidy 变异
+        if self.variant_type == "PLOIDY":
+            self._make_ploidy()
+        else:
+
+            # 第一步，生成非结构变异，是否与结构变异出现重合现象？
+            # 生成的位置包括： available中位置， insertion中的位置
+            self._make_snp()
+
+        # 第二步，生成结构变异
+            self._make_sv()
+
         new_positions = self._generateNewPosition(ref)
-
         self.breakpoints.generateBPs(new_positions, self.avail_position,
                                      ref)
+
+    def _init_node(self, ref):
+        self.avail_position = self._getPrtAvailPst(ref)
+        self.sv_positions = self._getPrtSVPosis()
+        self.breakpoints = self._getPrtBreakpoints()
+
+    def _make_ploidy(self):
+        # 此处对从父节点继承而来的变异信息进行染色体复制操作
+        # 单体型需要用字典来实现ploidy变异
+        # 从父节点的breakpoints和sv_positions中生成
+        for variant in self.variant_list:
+            chrom = variant[0]
+            # ploidy_number_before = variant[1]
+            # ploidy_number_after = variant[2]
+            ploidy_type_before = variant[3]
+            ploidy_type_after = variant[4]
+            ptc_before = Counter(ploidy_type_before)
+            ptc_after = Counter(ploidy_type_before)
+
+            self.ploidy_status[chrom] = ploidy_type_after
+
+            for hapl in ptc_before.keys():
+                if hapl in ptc_after.keys():
+                    if ptc_before[hapl] > ptc_after[hapl]:
+                        self.sv_positions.delete_ploidy(
+                            chrom, hapl, ptc_before[hapl]-ptc_after[hapl])
+                        self.breakpoints.delete_ploidy(
+                            chrom, hapl, ptc_before[hapl]-ptc_after[hapl])
+                    elif ptc_before[hapl] < ptc_after[hapl]:
+                        self.sv_positions.add_ploidy(
+                            chrom, hapl, ptc_after[hapl]-ptc_before[hapl])
+                        self.breakpoints.delete_ploidy(
+                            chrom, hapl, ptc_after[hapl]-ptc_before[hapl])
+                    else:
+                        continue
+                else:
+                    self.sv_positions.add_ploidy(chrom, hapl, ptc_after[hapl])
+                    self.breakpoints.delete_ploidy(chrom, hapl, ptc_after[hapl])
+        pass
+
+    def _make_snp(self):
+        pass
+
+    def _make_sv(self):
+        pass
 
     def _generateNewPosition(self, ref):
         current_sv_positions = {}
         chroms = ref.keys()
 
         # str_len=[len(ref[tmp][0]) for tmp in dic]
-        for i in range(len(self.sv_list)):
+        for i in range(len(self.variant_list)):
             # 此处sv变异被按顺序分配到染色体上
             k = i % len(chroms)
             while True:
                 count = 1
                 pois = self.avail_position.sample1pois(chroms[k])
                 # 生成位置，以随机生成的第一个首字母为起始位置。
-                if self.avail_position.isOverlaped(chroms[k], pois,
-                                                   pois+self.sv_list[i][0]):
+                if self.avail_position.isOverlaped(
+                        chroms[k], pois, pois+self.variant_list[i][0]):
                     if chroms[k] not in self.sv_positions.keys():
                         self.sv_positions[chroms[k]] = []
                     self.sv_positions[chroms[k]].append([
                         pois,
-                        self.sv_list[i][0],
-                        self.sv_list[i][1],
-                        self.sv_list[i][2],
-                        self.sv_list[i][-1]])
+                        self.variant_list[i][0],
+                        self.variant_list[i][1],
+                        self.variant_list[i][2],
+                        self.variant_list[i][-1]])
                     if chroms[k] not in current_sv_positions.keys():
                         current_sv_positions[chroms[k]] = []
                     current_sv_positions[chroms[k]].append([
                         pois,
-                        self.sv_list[i][0],
-                        self.sv_list[i][1],
-                        self.sv_list[i][2],
-                        self.sv_list[i][-1]])
+                        self.variant_list[i][0],
+                        self.variant_list[i][1],
+                        self.variant_list[i][2],
+                        self.variant_list[i][-1]])
                     self.avail_position.takePois(chroms[k], pois,
-                                                 pois+self.sv_list[i][0])
+                                                 pois+self.variant_list[i][0])
                     break
                 else:
                     count = count+1
@@ -203,26 +266,95 @@ class VariantTree(object):
                     continue
 
                 subclonal_name = list_line[0]
-                variant_name = list_line[1]
-                variant_length = int(list_line[2])
-                variant_copy_number = int(list_line[3])
-                variant_genotype = list_line[4]
-                variant_number = int(list_line[5])
+                variant_type = list_line[1]
 
-                if subclonal_name not in variant_nodes.keys():
-                    # 此处添加ref
-                    temp_Node = VariantNode(subclonal_name)
-                    variant_nodes[subclonal_name] = temp_Node
-                else:
-                    temp_Node = variant_nodes[subclonal_name]
+                if variant_type == "SV":
+                    variant_name = list_line[2]
 
-                for i in range(variant_number):
-                    # value: 变异长度、拷贝数、基因型、名称
-                    temp_Node.sv_list.append(
-                        [variant_length, variant_copy_number,
-                         variant_genotype, variant_name])
+                    if variant_name == "CNV":
+                        variant_length = int(list_line[3])
+                        variant_copy_number = int(list_line[4])
+                        variant_genotype = list_line[5]
+                        # ploidy_number = int(list_line[6])
+                        number = int(list_line[7])
+                        variant = [
+                            variant_length,
+                            variant_copy_number,
+                            variant_genotype,
+                            variant_name]
+                        self._add2node(
+                            variant, number, subclonal_name, variant_nodes)
 
-        # 此处添加根节点，也就是germline
+                    elif variant_name == "INVERTION":
+                        variant_length = int(list_line[3])
+                        variant_genotype = list_line[4]
+                        ploidy_genotype = list_line[5]
+                        number = int(list_line[6])
+
+                        variant = [
+                            variant_length,
+                            variant_genotype,
+                            ploidy_genotype,
+                            variant_name]
+                        self._add2node(
+                            variant, number, subclonal_name, variant_nodes)
+
+                    elif variant_name == "INDEL":
+                        variant_length = int(list_line[3])
+                        variant_genotype = list_line[4]
+                        ploidy_genotype = list_line[5]
+                        number = int(list_line[6])
+
+                        variant = [
+                            variant_length,
+                            variant_genotype,
+                            ploidy_genotype,
+                            variant_name]
+                        self._add2node(
+                            variant, number, subclonal_name, variant_nodes)
+                    elif variant_name == "TRANSVERSION":
+                        variant_length = int(list_line[3])
+                        variant_genotype = list_line[4]
+                        ploidy_genotype = list_line[5]
+                        number = int(list_line[6])
+
+                        variant = [
+                            variant_length,
+                            variant_genotype,
+                            ploidy_genotype,
+                            variant_name]
+                        self._add2node(
+                            variant, number, subclonal_name, variant_nodes)
+                    else:
+                        pass
+                elif variant_type == "PLOIDY":
+                    chrom = list_line[2]
+                    ploidy_number_before = int(list_line[3])
+                    ploidy_number_after = int(list_line[4])
+                    ploidy_type_before = list_line[5]
+                    ploidy_type_after = list_line[6]
+                    variant = [chrom, ploidy_number_before,
+                               ploidy_number_after, ploidy_type_before,
+                               ploidy_type_after]
+
+                    self._add2node(
+                        variant, 1, subclonal_name, variant_nodes)
+
+        self._linkNode(variant_nodes)
+
+        return variant_nodes
+
+    def _add2node(self, variant, number, subclonal_name, variant_nodes):
+        if subclonal_name not in variant_nodes.keys():
+            temp_Node = VariantNode(subclonal_name)
+            variant_nodes[subclonal_name] = temp_Node
+        else:
+            temp_Node = variant_nodes[subclonal_name]
+
+        for i in range(number):
+            temp_Node.variant_list = temp_Node.variant_list + variant
+
+    def _linkNode(self, variant_nodes):
         if "1" not in variant_nodes.keys():
             variant_nodes["1"] = VariantNode("1")
 
@@ -235,13 +367,7 @@ class VariantTree(object):
                 except KeyError:
                     print "Node parent error!"
 
-        return variant_nodes
-
     def makeSV(self, ref):
-        """生成变异位置
-        :returns: TODO
-
-        """
         self._make(self.variant_tree['1'], ref)
 
     def _make(self, node, ref):
@@ -258,7 +384,7 @@ def main():
     # variant_nodes = read_config("../config/sv_config_test")
     # print RenderTree(variant_nodes['1'])
     # for pre, _, node in RenderTree(variant_nodes['1']):
-    #     print node.name, node.sv_list
+    #     print node.name, node.variant_list
 
 
 if __name__ == "__main__":

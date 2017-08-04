@@ -22,6 +22,7 @@ class Break:
     def __init__(self):
         self.chrom = ""
         self.hapl_type = -1
+        self.hapl_index = -1
         self.position = -1
         self.name = ""
         self.insertStr = None
@@ -124,7 +125,7 @@ class BreakPoints():
 
         return hapStr
 
-    def _getRandomPois(self, chrom, hapl_type, avail_position):
+    def _getRandomPois(self, chrom, avail_position):
         pois = -1
         while True:
             # 从候选位置中抽取插入位置，位置pois - 1
@@ -138,76 +139,115 @@ class BreakPoints():
 
         return pois
 
-    def _generateDupBPs(self, variant_dict, avail_position, ref):
+    def _generateDupBPs(self, variant_dict, avail_position, ref, ploidy_status):
         """
         生成duplication copy
         """
         # dic value: 位置、变异长度、拷贝数、基因型、名称
+        # 注意生成多重ploidy的情况
+
         for chrom in variant_dict.keys():
+            psc = Counter(ploidy_status[chrom])
             for vartItem in variant_dict[chrom]:
                 if vartItem[-2] == "NONE":
                     continue
                 else:
                     genoCounter = Counter(vartItem[-2])
+
+                    hap_set_genoc = set(genoCounter.keys())
+                    hap_set_plosc = set(psc.keys())
+                    assert hap_set_genoc <= hap_set_plosc
+
                     for genoHap in genoCounter.keys():
-                        for copy_i in range(genoCounter[genoHap] - 1):
+                        for copy_i in range(genoCounter[genoHap] -
+                                            psc[genoHap]):
                             bp = Break()
                             bp.chrom = chrom
-                            bp.hapl_type = random.sample([0, 1], 1)[0]
-                            bp.position = self._getRandomPois(chrom,
-                                                              bp.hapl_type,
-                                                              avail_position)
+                            bp.hapl_type = random.sample(['P', 'M'], 1)[0]
+                            bp.hapl_index = random.sample(
+                                range(psc[genoHap]), 1)[0]
+
+                            bp.position = self._getRandomPois(
+                                chrom, avail_position)
+
                             bp.name = "duplication"
                             if genoHap == 'P':
-                                bp.insertStr = ref[chrom][0][
-                                    vartItem[0] : vartItem[0] + vartItem[1]]
+                                bp.insertStr = ref[chrom]['P'][hap][
+                                    vartItem[0]: vartItem[0] + vartItem[1]]
                             elif genoHap == 'M':
-                                bp.insertStr = ref[chrom][1][
-                                    vartItem[0] : vartItem[0] + vartItem[1]]
+                                bp.insertStr = ref[chrom]['M'][hap][
+                                    vartItem[0]: vartItem[0] + vartItem[1]]
                             else:
                                 print "Error"
                             self.breaks_list.append(bp)
 
-    def _generateDelBPs(self, variant_dict):
+    def _generateDelBPs(self, variant_dict, ploidy_status):
         """ 生成deletion的breakpoints
         :returns: TODO
 
         """
         # dic value: 位置、变异长度、拷贝数、基因型、名称
+
         for chrom in variant_dict.keys():
+            # 获取当前染色体的ploidy状态
+            psc = Counter(ploidy_status[chrom])
+
             for vartItem in variant_dict[chrom]:
-                if vartItem[-2] == "NONE":
-                    bp10 = self._deletionBP(
-                        chrom, 0, vartItem[0], vartItem[0]+vartItem[1])
-                    bp20 = self._deletionBP(
-                        chrom, 0, vartItem[0]+vartItem[1], vartItem[0])
-                    bp11 = self._deletionBP(
-                        chrom, 1, vartItem[0], vartItem[0]+vartItem[1])
-                    bp21 = self._deletionBP(
-                        chrom, 1, vartItem[0]+vartItem[1], vartItem[0])
-
-                    self.breaks_list = self.breaks_list + \
-                        [bp10, bp20, bp11, bp21]
+                genotype = vartItem[-2]
+                if  genotype == "NONE":
+                    # 每一个单体都要形成一对del bp
+                    for hapl_type in psc.keys():
+                        for hapl_index in range(psc[hapl_type]):
+                            bp_start = self._deletionBP(
+                                chrom, hapl_type, hapl_index,
+                                vartItem[0], vartItem[0]+vartItem[1])
+                            bp_end = self._deletionBP(
+                                chrom, hapl_type, hapl_index,
+                                vartItem[0]+vartItem[1], vartItem[0])
+                            self.breaks_list = self.breaks_list + \
+                                [bp_start, bp_end]
                 else:
-                    genoCounter = Counter(vartItem[-2])
-                    # 出现纯合时候
-                    if len(genoCounter.keys()) == 1:
-                        if 'P' in genoCounter.keys():
-                            bp1 = self._deletionBP(
-                                chrom, 1, vartItem[0], vartItem[0]+vartItem[1])
-                            bp2 = self._deletionBP(
-                                chrom, 1, vartItem[0]+vartItem[1], vartItem[0])
-                        elif 'M' in genoCounter.keys():
-                            bp1 = self._deletionBP(
-                                chrom, 0, vartItem[0], vartItem[0]+vartItem[1])
-                            bp2 = self._deletionBP(
-                                chrom, 0, vartItem[0]+vartItem[1], vartItem[0])
+                    genoCounter = Counter(genotype)
+                    # 只要出现与ploidy状态，减少的位置就要写入deletion
 
-                        self.breaks_list = self.breaks_list + [bp1, bp2]
-                    else:
-                        continue
+                    # 出现纯合时候, No key
+                    if len(genoCounter.keys()) < len(psc.keys()):
+                        for hapl_type in set(psc.keys)-set(genoCounter.keys()):
+                            for hapl_index in range(psc[hapl_type]):
+                                bp_start = self._deletionBP(
+                                    chrom, hapl_type, hapl_index,
+                                    vartItem[0], vartItem[0]+vartItem[1])
+                                bp_end = self._deletionBP(
+                                    chrom, hapl_type, hapl_index,
+                                    vartItem[0]+vartItem[1], vartItem[0])
+                                self.breaks_list = self.breaks_list + \
+                                    [bp_start, bp_end]
 
-    def _deletionBP(self, chrom, hapl_type, position, paired_position):
+                    for hapl_type in genoCounter.keys():
+                        del_cp_num = psc[hapl_type] - genoCounter[hapl_type]
+                        if del_cp_num <= 0:
+                            continue
+                        else:
+                            del_cp_indexes = ramdom.sample(
+                                range(psc[hapl_type]), del_cp_num)
+                            for hapl_index in del_cp_indexes:
+                                bp_start = self._deletionBP(
+                                    chrom, hapl_type, hapl_index,
+                                    vartItem[0], vartItem[0]+vartItem[1])
+                                bp_end = self._deletionBP(
+                                    chrom, hapl_type, hapl_index,
+                                    vartItem[0]+vartItem[1], vartItem[0])
+                                self.breaks_list = self.breaks_list + \
+                                    [bp_start, bp_end]
+
+
+    def _deletionBP(
+            self,
+            chrom,
+            hapl_type,
+            hapl_index,
+            position,
+            paired_position):
         """TODO: Docstring for _generateBPdeletion.
 
         :arg1: TODO
@@ -219,6 +259,7 @@ class BreakPoints():
 
         bp.chrom = chrom
         bp.hapl_type = hapl_type
+        bp.hapl_index = hapl_index
         bp.position = position
         bp.paired_position = paired_position
 
