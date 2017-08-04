@@ -3,7 +3,6 @@
 '''
 # =============================================================================
 #      FileName: utils.py
-#          Desc: 辅助函数
 #        Author: Chu Yanshuo
 #         Email: chu@yanshuo.name
 #      HomePage: http://yanshuo.name
@@ -84,9 +83,9 @@ def reference(ref_name):
 
             if chr_name != '':
                 if chr_name not in ref_dic:
-                    ref_dic[chr_name] = {"P0": tmp_str}
+                    ref_dic[chr_name] = {"P": [tmp_str]}
                 else:
-                    ref_dic[chr_name]["M0"] = tmp_str
+                    ref_dic[chr_name]["M"] = [tmp_str]
 
             chr_name = chr_split[0].split('>')[1]
             tmp_str = ''
@@ -94,9 +93,9 @@ def reference(ref_name):
             tmp_str = tmp_str+newline
 
     if chr_name not in ref_dic:
-        ref_dic[chr_name] = {"P0": tmp_str}
+        ref_dic[chr_name] = {"P": [tmp_str]}
     else:
-        ref_dic[chr_name]["M0"] = tmp_str
+        ref_dic[chr_name]["M"] = [tmp_str]
     return ref_dic
 
 

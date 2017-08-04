@@ -30,7 +30,7 @@ class GenomeRange(object):
     def _init_from_ref(self, ref):
         return compute_range(ref)
 
-    def sample1pois(self, chrom):
+    def sample1posi(self, chrom):
         return random.sample(self._genome_range[chrom], 1)[0]
 
     def isOverlaped(self, chrom, start, end):
@@ -41,7 +41,7 @@ class GenomeRange(object):
         else:
             return False
 
-    def takePois(self, chrom, start, end):
+    def takePosi(self, chrom, start, end):
         if not self.isOverlaped(chrom, start, end):
             print "Warning! remove not overlapping position!"
         temp_range = np.arange(start, end)
