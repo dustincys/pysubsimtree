@@ -20,14 +20,14 @@ import random
 def compute_range(ref):
     ref_range = {}
     for chrom in ref:
-        avai_range = np.arange(0, len(ref[chrom][0]))
-        n_base_indexes = re.finditer("[N]+", ref[chrom][0])
+        avai_range = np.arange(0, len(ref[chrom]['P'][0]))
+        n_base_indexes = re.finditer("[N]+", ref[chrom]['P'][0])
         for item in n_base_indexes:
             start = item.start(0)
             end = item.end(0)
             if not start - 20 <= 0:
                 start = start - 20
-            if not end + 20 >= len(ref[chrom][0]):
+            if not end + 20 >= len(ref[chrom]['P'][0]):
                 end = end + 20
             item_range = np.arange(start, end)
             avai_range = np.delete(avai_range, item_range)
@@ -229,3 +229,19 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
         ref_dic[key] = tmp_str
     outfile.close()
     return [ref_dic, snp_list]
+
+
+def rand_DNA(length=10):
+    return ''.join(random.choice(['A', 'T', 'G', 'C']) for _ in range(length))
+
+
+def SNP(str1):
+    l = ['A', 'T', 'C', 'G', 'N']
+    l.remove(str1)
+    while True:
+        tmp = random.sample(l, 1)[0]
+        if tmp != 'N':
+            break
+        else:
+            continue
+    return tmp

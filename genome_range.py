@@ -23,12 +23,17 @@ class GenomeRange(object):
 
     """GenomeRange, record positions"""
 
-    def __init__(self, ref):
+    def __init__(self):
         """initialized by ref"""
-        self._genome_range = self._init_from_ref(ref)
+        self._genome_range = None
 
-    def _init_from_ref(self, ref):
-        return compute_range(ref)
+    def init_none(self, ref):
+        for chrom in ref.keys():
+            self._genome_range[chrom] = np.arange(0, 0)
+
+    def init_from_ref(self, ref):
+        # {'chr1':[], 'chr2':[] }
+        self._genome_range = compute_range(ref)
 
     def sample1posi(self, chrom):
         return random.sample(self._genome_range[chrom], 1)[0]
@@ -47,3 +52,9 @@ class GenomeRange(object):
         temp_range = np.arange(start, end)
         self._genome_range[chrom] = np.delete(self._genome_range[chrom],
                                               temp_range)
+
+    def addRange(self, chrom, start, end):
+        pre_range = set(self._genome_range[chrom])
+        add_range = set(np.arange(start, end))
+        self._genome_range[chrom] = np.array(list(pre_range + add_range))
+
