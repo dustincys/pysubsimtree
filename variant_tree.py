@@ -15,9 +15,10 @@
 
 from breakpoint import BreakPoints
 from sv_positions import SV_positions
+from snv_positions import SNV_positions
 from genome_range import GenomeRange
 
-from utils.utils import outputFa
+from utils.utils import outputFa, SNP
 
 from anytree import NodeMixin
 
@@ -55,7 +56,11 @@ class VariantNode(NodeMixin):
         self.noDEL_position = None
 
     def outputRef(self, ref, outfilePrefix):
-        variant_ref = self.breakpoints.generateFa(ref)
+        ref_ploidy = self._ref_make_ploidy()
+        ref_ploidy_snv = self._ref_make_snv()
+
+        variant_ref = self.breakpoints.generateFa(ref_ploidy_snv)
+
         outputFa(variant_ref, outfilePrefix+self.name+".fa")
 
     def outputVartPosi(self, outfilePrefix):
@@ -101,24 +106,16 @@ class VariantNode(NodeMixin):
 
             # 第一步，生成非结构变异，是否与结构变异出现重合现象？
             # 生成的位置包括： available中位置， insertion中的位置
-            self._make_snv(self.noDEL_position)
+            self._make_snv()
 
         # 第二步，生成结构变异
-            self._make_sv()
-
-            new_positions = self._generateNewPosition(ref)
-
-            # noBP remove deletion seg
-            self.breakpoints.generateBPs(new_positions, self.avail_position,
-                                        self.noDEL_position, ref)
+            self._make_sv(ref)
 
     def _init_node(self, ref):
         self.avail_position = self._getPrtAvailPst(ref)
         self.sv_positions = self._getPrtSVPosis()
         self.snv_positions = self._getPrtSNVPosis()
-
         self.breakpoints = self._getPrtBreakpoints()
-
         self.noDEL_position = self._getPrtNBPPst(ref)
 
     def _make_ploidy(self):
@@ -156,8 +153,7 @@ class VariantNode(NodeMixin):
                         hapls = ''.join(random.choice(range(ptc_before[hapl]))
                                         for _ in range(number))
                         self.breakpoints.add_ploidy(chrom, hapl, hapls)
-                        self.snv_positions.add_ploidy(chrom, hapl,
-                                                         hapl_idxes)
+                        self.snv_positions.add_ploidy(chrom, hapl, hapl_idxes)
 
                     else:
                         continue
@@ -175,32 +171,50 @@ class VariantNode(NodeMixin):
         # 从sv_position和breakpoints的insert_str中生成重合的变异
         # 只有非重合变异可以生成纯合突变
 
-
         snv_list = filter(lambda item: item[-1] == "SNV", self.variant_list)
         for snv in snv_list:
-            chrom = item[0]
-            isHetero = item[1]
-            isOverlap = item[2]
-            ploidy_type = item[3]
-            number = item[4]
-            variant_type = item[5]
+            chrom = snv[0]
+            isHetero = snv[1]
+            isOverlap = snv[2]
+            # ploidy_type = snv[3]
+            number = snv[4]
+            # variant_type = snv[5]
 
-            psc = Counter(self.ploidy_status[chrom])
+            # psc = Counter(self.ploidy_status[chrom])
 
             if isOverlap == "TRUE":
                 # only hetero
+                number_noDEL = number
+                number_bp = 0
                 noDELCNVpois = self._getNDCPs(chrom)
+                strBps = self._getStrBps(chrom)
 
-                for i in range(number):
+                if strBps is not None:
+                    number_noDEL = int(number / 2)
+                    number_bp = number - number_noDEL
+
+                for i in range(number_bp):
+                    bp = random.sample(strBps, 1)[0]
+                    position = random.sample(range(len(bp.insert_str)), 1)[0]
+                    bp_lstr = list(bp.insert_str)
+                    bp_lstr[position] = SNP(bp_lstr[position])
+                    bp.insert_str = ''.join(bp_lstr)
+
+                for i in range(number_noDEL):
 
                     noDELCNV = random.sample(noDELCNVpois, 1)[0]
                     length = noDELCNV.sv.length
+                    svgc = Counter(noDELCNV.sv.genotype)
+
+                    hapl_remain = noDELCNV.sv.hapl_remain
+
+
                     position = noDELCNV.position\
                         + random.sample(range(length), 1)[0]
 
-                    temp_hapl_type = random.sample(ref[chrom].keys(), 1)[0]
+                    temp_hapl_type = random.sample(hapl_remain.keys(), 1)[0]
                     temp_hapl_index = random.sample(
-                        range(len(ref[chrom][temp_hapl_type])), 1)[0]
+                        hapl_remain[temp_hapl_type], 1)[0]
                     hapl_lstr = ref[chrom][temp_hapl_type][temp_hapl_index]
                     B_allele = SNP(hapl_lstr[position])
 
@@ -241,12 +255,29 @@ class VariantNode(NodeMixin):
                                                            isHetero, isOverlap)
         pass
 
+    def _getStrBps(self, chrom):
+        # 此处为了进行ploidy操作，bp结构为 {chr1:{'P':[[bp1],[bp2]], 'M':[[bp3]]}}
+
+        for hapl_type in self.breakpoints.breaks_list[chrom].keys():
+            for hapl_index in range(len(
+                self.breakpoints.breaks_list[chrom][hapl_type])):
+                strBps = filter(lambda item: item.insert_str is not None,
+                                self.breakpoints.breaks_list\
+                                [chrom][hapl_type][hapl_index])
+                if len(strBps) > 1:
+                    return strBps
+
+        return None
+
     def _getNDCPs(self, chrom):
         return filter(
-            lambda item:item.sv_type == "CNV" and item.sv.genotype != "NONE",
+            lambda item: item.sv_type == "CNV" and item.sv.genotype != "NONE",
             self.SV_positions[chrom])
 
     def _make_sv(self):
+        new_positions = self._generateNewPosition(ref)
+        # noBP remove deletion seg
+        self.breakpoints.generateBPs(new_positions, self.avail_position, ref)
         pass
 
     def _generateNewPosition(self):
@@ -279,10 +310,13 @@ class VariantNode(NodeMixin):
                     if variant_name == "CNV":
                         copy_number = sv[2]
                         genotype = sv[3]
+
                         self.sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
+                            chrom, posi, length, copy_number, genotype,
+                            self.ploidy_status)
                         current_sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
+                            chrom, posi, length, copy_number, genotype,
+                            self.ploidy_status)
 
                     if variant_name == "INVERSION":
                         genotype = sv[2]
@@ -340,7 +374,7 @@ class VariantNode(NodeMixin):
 
     def _getPrtAvailPst(self, ref):
         if self._isRoot():
-            avail_position =  GenomeRange()
+            avail_position = GenomeRange()
             avail_position.init_from_ref(ref)
             return avail_position
         else:
@@ -348,1068 +382,7 @@ class VariantNode(NodeMixin):
 
     def _getPrtNBPPst(self, ref):
         if self._isRoot():
-            avail_position =  GenomeRange()
-            avail_position.init_none(ref)
-            return avail_position
-        else:
-            return copy.deepcopy(self.parent.noDEL_position)
-
-    def _isRoot(self):
-        if self.parent is None:
-            return True
-        else:
-            return False
-
-
-class VariantTree(object):
-
-    """变异树"""
-
-    def __init__(self, configFileName):
-        self.variant_tree = self._read_config(configFileName)
-
-    def _getParentName(self, name):
-        """生成父节点的名称
-
-        格式：
-        1
-        1.1
-        1.2
-        1.1.1
-        ...
-
-        :name: 当前节点名称
-        :returns: 父节点名称
-
-        """
-        name_list = name.rsplit(".", 1)
-        if len(name_list) == 1:
-            parent_name = None
-        else:
-            parent_name = name_list[0]
-
-        return parent_name
-
-    def _read_config(self, fileName):
-        variant_nodes = {}
-
-        with open(fileName) as infile:
-            for line in sorted(infile):
-                # 这里按顺序生成
-                if not line.startswith('#'):
-                    list_line = line.rstrip().split('\t')
-                else:
-                    continue
-
-                subclonal_name = list_line[0]
-                variant_type = list_line[1]
-
-                if variant_type == "SV":
-                    variant_name = list_line[2]
-
-                    if variant_name == "CNV":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_copy_number = int(list_line[5])
-                        variant_genotype = list_line[6]
-                        number = int(list_line[7])
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_copy_number,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "INVERTION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        number = int(list_line[6])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "INSERTION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "DELETION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-                    elif variant_name == "TRANSVERSION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-                    else:
-                        pass
-                elif variant_type == "PLOIDY":
-                    chrom = list_line[2]
-                    ploidy_number_before = int(list_line[3])
-                    ploidy_number_after = int(list_line[4])
-                    ploidy_type_before = list_line[5]
-                    ploidy_type_after = list_line[6]
-                    variant = [chrom, ploidy_number_before,
-                               ploidy_number_after, ploidy_type_before,
-                               ploidy_type_after]
-
-                    self._add2node(
-                        variant, 1, subclonal_name, variant_nodes)
-
-                elif variant_type == "SNV":
-                    chrom = list_line[2]
-                    isHetero = list_line[3]
-                    isOverlap = list_line[4]
-                    ploidy_type = list_line[5]
-                    number = int(list_line[6])
-
-
-        pass
-
-    def _make_sv(self):
-        pass
-
-    def _generateNewPosition(self):
-        current_sv_positions = SV_positions()
-
-        # str_len=[len(ref[tmp][0]) for tmp in dic]
-        sv_list = filter(lambda item: item[-1] == "SV", self.variant_list)
-
-        for sv in sv_list:
-            # 此处sv变异被按顺序分配到染色体上
-            chrom = sv[0]
-            length = sv[1]
-            variant_name = sv[-2]
-
-            while True:
-                count = 1
-                posi = self.avail_position.sample1posi(chrom)
-                # 生成位置，以随机生成的第一个首字母为起始位置。
-                if variant_name == "INSERTION":
-                    end = posi + 1
-                else:
-                    end = posi + length
-
-                isOverlap = self.avail_position.isOverlaped(chrom, posi, end)
-                if isOverlap:
-                    # 此处需要在conf 中给定chrom, 因为不同的染色体的ploidy
-                    # 不同，对应的变异的基因型也不同
-                    self.avail_position.takePosi(chrom, posi, end)
-
-                    if variant_name == "CNV":
-                        copy_number = sv[2]
-                        genotype = sv[3]
-                        self.sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
-                        current_sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
-
-                    if variant_name == "INVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
-
-                    if variant_name == "DELETION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-
-                    if variant_name == "TRANSVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                    break
-                else:
-                    count = count+1
-                    if count < 20:
-                        continue
-                    else:
-                        break
-
-        self.SV_positions.sorted()
-        current_sv_positions.sorted()
-
-        return current_sv_positions
-
-    def _getPrtBreakpoints(self):
-        if self._isRoot():
-            return BreakPoints()
-        else:
-            return copy.deepcopy(self.parent.breakpoints)
-        pass
-
-    def _getPrtSNVPosis(self):
-        if self._isRoot():
-            return SNV_positions()
-        else:
-            return copy.deepcopy(self.parent.snv_positions)
-        pass
-
-    def _getPrtSVPosis(self):
-        if self._isRoot():
-            return SV_positions()
-        else:
-            return copy.deepcopy(self.parent.sv_positions)
-        pass
-
-    def _getPrtAvailPst(self, ref):
-        if self._isRoot():
-            avail_position =  GenomeRange()
-            avail_position.init_from_ref(ref)
-            return avail_position
-        else:
-            return copy.deepcopy(self.parent.avail_position)
-
-    def _getPrtNBPPst(self, ref):
-        if self._isRoot():
-            avail_position =  GenomeRange()
-            avail_position.init_none(ref)
-            return avail_position
-        else:
-            return copy.deepcopy(self.parent.noDEL_position)
-
-    def _isRoot(self):
-        if self.parent is None:
-            return True
-        else:
-            return False
-
-
-class VariantTree(object):
-
-    """变异树"""
-
-    def __init__(self, configFileName):
-        self.variant_tree = self._read_config(configFileName)
-
-    def _getParentName(self, name):
-        """生成父节点的名称
-
-        格式：
-        1
-        1.1
-        1.2
-        1.1.1
-        ...
-
-        :name: 当前节点名称
-        :returns: 父节点名称
-
-        """
-        name_list = name.rsplit(".", 1)
-        if len(name_list) == 1:
-            parent_name = None
-        else:
-            parent_name = name_list[0]
-
-        return parent_name
-
-    def _read_config(self, fileName):
-        variant_nodes = {}
-
-        with open(fileName) as infile:
-            for line in sorted(infile):
-                # 这里按顺序生成
-                if not line.startswith('#'):
-                    list_line = line.rstrip().split('\t')
-                else:
-                    continue
-
-                subclonal_name = list_line[0]
-                variant_type = list_line[1]
-
-                if variant_type == "SV":
-                    variant_name = list_line[2]
-
-                    if variant_name == "CNV":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_copy_number = int(list_line[5])
-                        variant_genotype = list_line[6]
-                        number = int(list_line[7])
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_copy_number,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "INVERTION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        number = int(list_line[6])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "INSERTION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "DELETION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-                    elif variant_name == "TRANSVERSION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-                    else:
-                        pass
-                elif variant_type == "PLOIDY":
-                    chrom = list_line[2]
-                    ploidy_number_before = int(list_line[3])
-                    ploidy_number_after = int(list_line[4])
-                    ploidy_type_before = list_line[5]
-                    ploidy_type_after = list_line[6]
-                    variant = [chrom, ploidy_number_before,
-                               ploidy_number_after, ploidy_type_before,
-                               ploidy_type_after]
-
-                    self._add2node(
-                        variant, 1, subclonal_name, variant_nodes)
-
-                elif variant_type == "SNV":
-                    chrom = list_line[2]
-                    isHetero = list_line[3]
-                    isOverlap = list_line[4]
-                    ploidy_type = list_line[5]
-                    number = int(list_line[6])
-
-
-        pass
-
-    def _make_sv(self):
-        pass
-
-    def _generateNewPosition(self):
-        current_sv_positions = SV_positions()
-
-        # str_len=[len(ref[tmp][0]) for tmp in dic]
-        sv_list = filter(lambda item: item[-1] == "SV", self.variant_list)
-
-        for sv in sv_list:
-            # 此处sv变异被按顺序分配到染色体上
-            chrom = sv[0]
-            length = sv[1]
-            variant_name = sv[-2]
-
-            while True:
-                count = 1
-                posi = self.avail_position.sample1posi(chrom)
-                # 生成位置，以随机生成的第一个首字母为起始位置。
-                if variant_name == "INSERTION":
-                    end = posi + 1
-                else:
-                    end = posi + length
-
-                isOverlap = self.avail_position.isOverlaped(chrom, posi, end)
-                if isOverlap:
-                    # 此处需要在conf 中给定chrom, 因为不同的染色体的ploidy
-                    # 不同，对应的变异的基因型也不同
-                    self.avail_position.takePosi(chrom, posi, end)
-
-                    if variant_name == "CNV":
-                        copy_number = sv[2]
-                        genotype = sv[3]
-                        self.sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
-                        current_sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
-
-                    if variant_name == "INVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
-
-                    if variant_name == "DELETION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-
-                    if variant_name == "TRANSVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                    break
-                else:
-                    count = count+1
-                    if count < 20:
-                        continue
-                    else:
-                        break
-
-        self.SV_positions.sorted()
-        current_sv_positions.sorted()
-
-        return current_sv_positions
-
-    def _getPrtBreakpoints(self):
-        if self._isRoot():
-            return BreakPoints()
-        else:
-            return copy.deepcopy(self.parent.breakpoints)
-        pass
-
-    def _getPrtSNVPosis(self):
-        if self._isRoot():
-            return SNV_positions()
-        else:
-            return copy.deepcopy(self.parent.snv_positions)
-        pass
-
-    def _getPrtSVPosis(self):
-        if self._isRoot():
-            return SV_positions()
-        else:
-            return copy.deepcopy(self.parent.sv_positions)
-        pass
-
-    def _getPrtAvailPst(self, ref):
-        if self._isRoot():
-            avail_position =  GenomeRange()
-            avail_position.init_from_ref(ref)
-            return avail_position
-        else:
-            return copy.deepcopy(self.parent.avail_position)
-
-    def _getPrtNBPPst(self, ref):
-        if self._isRoot():
-            avail_position =  GenomeRange()
-            avail_position.init_none(ref)
-            return avail_position
-        else:
-            return copy.deepcopy(self.parent.noDEL_position)
-
-    def _isRoot(self):
-        if self.parent is None:
-            return True
-        else:
-            return False
-
-
-class VariantTree(object):
-
-    """变异树"""
-
-    def __init__(self, configFileName):
-        self.variant_tree = self._read_config(configFileName)
-
-    def _getParentName(self, name):
-        """生成父节点的名称
-
-        格式：
-        1
-        1.1
-        1.2
-        1.1.1
-        ...
-
-        :name: 当前节点名称
-        :returns: 父节点名称
-
-        """
-        name_list = name.rsplit(".", 1)
-        if len(name_list) == 1:
-            parent_name = None
-        else:
-            parent_name = name_list[0]
-
-        return parent_name
-
-    def _read_config(self, fileName):
-        variant_nodes = {}
-
-        with open(fileName) as infile:
-            for line in sorted(infile):
-                # 这里按顺序生成
-                if not line.startswith('#'):
-                    list_line = line.rstrip().split('\t')
-                else:
-                    continue
-
-                subclonal_name = list_line[0]
-                variant_type = list_line[1]
-
-                if variant_type == "SV":
-                    variant_name = list_line[2]
-
-                    if variant_name == "CNV":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_copy_number = int(list_line[5])
-                        variant_genotype = list_line[6]
-                        number = int(list_line[7])
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_copy_number,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "INVERTION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        number = int(list_line[6])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "INSERTION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "DELETION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-                    elif variant_name == "TRANSVERSION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-                    else:
-                        pass
-                elif variant_type == "PLOIDY":
-                    chrom = list_line[2]
-                    ploidy_number_before = int(list_line[3])
-                    ploidy_number_after = int(list_line[4])
-                    ploidy_type_before = list_line[5]
-                    ploidy_type_after = list_line[6]
-                    variant = [chrom, ploidy_number_before,
-                               ploidy_number_after, ploidy_type_before,
-                               ploidy_type_after]
-
-                    self._add2node(
-                        variant, 1, subclonal_name, variant_nodes)
-
-                elif variant_type == "SNV":
-                    chrom = list_line[2]
-                    isHetero = list_line[3]
-                    isOverlap = list_line[4]
-                    ploidy_type = list_line[5]
-                    number = int(list_line[6])
-
-
-        pass
-
-    def _make_sv(self):
-        pass
-
-    def _generateNewPosition(self):
-        current_sv_positions = SV_positions()
-
-        # str_len=[len(ref[tmp][0]) for tmp in dic]
-        sv_list = filter(lambda item: item[-1] == "SV", self.variant_list)
-
-        for sv in sv_list:
-            # 此处sv变异被按顺序分配到染色体上
-            chrom = sv[0]
-            length = sv[1]
-            variant_name = sv[-2]
-
-            while True:
-                count = 1
-                posi = self.avail_position.sample1posi(chrom)
-                # 生成位置，以随机生成的第一个首字母为起始位置。
-                if variant_name == "INSERTION":
-                    end = posi + 1
-                else:
-                    end = posi + length
-
-                isOverlap = self.avail_position.isOverlaped(chrom, posi, end)
-                if isOverlap:
-                    # 此处需要在conf 中给定chrom, 因为不同的染色体的ploidy
-                    # 不同，对应的变异的基因型也不同
-                    self.avail_position.takePosi(chrom, posi, end)
-
-                    if variant_name == "CNV":
-                        copy_number = sv[2]
-                        genotype = sv[3]
-                        self.sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
-                        current_sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
-
-                    if variant_name == "INVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
-
-                    if variant_name == "DELETION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-
-                    if variant_name == "TRANSVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                    break
-                else:
-                    count = count+1
-                    if count < 20:
-                        continue
-                    else:
-                        break
-
-        self.SV_positions.sorted()
-        current_sv_positions.sorted()
-
-        return current_sv_positions
-
-    def _getPrtBreakpoints(self):
-        if self._isRoot():
-            return BreakPoints()
-        else:
-            return copy.deepcopy(self.parent.breakpoints)
-        pass
-
-    def _getPrtSNVPosis(self):
-        if self._isRoot():
-            return SNV_positions()
-        else:
-            return copy.deepcopy(self.parent.snv_positions)
-        pass
-
-    def _getPrtSVPosis(self):
-        if self._isRoot():
-            return SV_positions()
-        else:
-            return copy.deepcopy(self.parent.sv_positions)
-        pass
-
-    def _getPrtAvailPst(self, ref):
-        if self._isRoot():
-            avail_position =  GenomeRange()
-            avail_position.init_from_ref(ref)
-            return avail_position
-        else:
-            return copy.deepcopy(self.parent.avail_position)
-
-    def _getPrtNBPPst(self, ref):
-        if self._isRoot():
-            avail_position =  GenomeRange()
-            avail_position.init_none(ref)
-            return avail_position
-        else:
-            return copy.deepcopy(self.parent.noDEL_position)
-
-    def _isRoot(self):
-        if self.parent is None:
-            return True
-        else:
-            return False
-
-
-class VariantTree(object):
-
-    """变异树"""
-
-    def __init__(self, configFileName):
-        self.variant_tree = self._read_config(configFileName)
-
-    def _getParentName(self, name):
-        """生成父节点的名称
-
-        格式：
-        1
-        1.1
-        1.2
-        1.1.1
-        ...
-
-        :name: 当前节点名称
-        :returns: 父节点名称
-
-        """
-        name_list = name.rsplit(".", 1)
-        if len(name_list) == 1:
-            parent_name = None
-        else:
-            parent_name = name_list[0]
-
-        return parent_name
-
-    def _read_config(self, fileName):
-        variant_nodes = {}
-
-        with open(fileName) as infile:
-            for line in sorted(infile):
-                # 这里按顺序生成
-                if not line.startswith('#'):
-                    list_line = line.rstrip().split('\t')
-                else:
-                    continue
-
-                subclonal_name = list_line[0]
-                variant_type = list_line[1]
-
-                if variant_type == "SV":
-                    variant_name = list_line[2]
-
-                    if variant_name == "CNV":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_copy_number = int(list_line[5])
-                        variant_genotype = list_line[6]
-                        number = int(list_line[7])
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_copy_number,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "INVERTION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        number = int(list_line[6])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "INSERTION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-
-                    elif variant_name == "DELETION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            chrom,
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-                    elif variant_name == "TRANSVERSION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
-
-                        variant = [
-                            variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
-                            variant_name,
-                            variant_type]
-                        self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
-                    else:
-                        pass
-                elif variant_type == "PLOIDY":
-                    chrom = list_line[2]
-                    ploidy_number_before = int(list_line[3])
-                    ploidy_number_after = int(list_line[4])
-                    ploidy_type_before = list_line[5]
-                    ploidy_type_after = list_line[6]
-                    variant = [chrom, ploidy_number_before,
-                               ploidy_number_after, ploidy_type_before,
-                               ploidy_type_after]
-
-                    self._add2node(
-                        variant, 1, subclonal_name, variant_nodes)
-
-                elif variant_type == "SNV":
-                    chrom = list_line[2]
-                    isHetero = list_line[3]
-                    isOverlap = list_line[4]
-                    ploidy_type = list_line[5]
-                    number = int(list_line[6])
-
-
-
-        pass
-
-    def _make_sv(self):
-        pass
-
-    def _generateNewPosition(self):
-        current_sv_positions = SV_positions()
-
-        # str_len=[len(ref[tmp][0]) for tmp in dic]
-        sv_list = filter(lambda item: item[-1] == "SV", self.variant_list)
-
-        for sv in sv_list:
-            # 此处sv变异被按顺序分配到染色体上
-            chrom = sv[0]
-            length = sv[1]
-            variant_name = sv[-2]
-
-            while True:
-                count = 1
-                posi = self.avail_position.sample1posi(chrom)
-                # 生成位置，以随机生成的第一个首字母为起始位置。
-                if variant_name == "INSERTION":
-                    end = posi + 1
-                else:
-                    end = posi + length
-
-                isOverlap = self.avail_position.isOverlaped(chrom, posi, end)
-                if isOverlap:
-                    # 此处需要在conf 中给定chrom, 因为不同的染色体的ploidy
-                    # 不同，对应的变异的基因型也不同
-                    self.avail_position.takePosi(chrom, posi, end)
-
-                    if variant_name == "CNV":
-                        copy_number = sv[2]
-                        genotype = sv[3]
-                        self.sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
-                        current_sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype)
-
-                    if variant_name == "INVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
-
-                    if variant_name == "DELETION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-
-                    if variant_name == "TRANSVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                    break
-                else:
-                    count = count+1
-                    if count < 20:
-                        continue
-                    else:
-                        break
-
-        self.SV_positions.sorted()
-        current_sv_positions.sorted()
-
-        return current_sv_positions
-
-    def _getPrtBreakpoints(self):
-        if self._isRoot():
-            return BreakPoints()
-        else:
-            return copy.deepcopy(self.parent.breakpoints)
-        pass
-
-    def _getPrtSNVPosis(self):
-        if self._isRoot():
-            return SNV_positions()
-        else:
-            return copy.deepcopy(self.parent.snv_positions)
-        pass
-
-    def _getPrtSVPosis(self):
-        if self._isRoot():
-            return SV_positions()
-        else:
-            return copy.deepcopy(self.parent.sv_positions)
-        pass
-
-    def _getPrtAvailPst(self, ref):
-        if self._isRoot():
-            avail_position =  GenomeRange()
-            avail_position.init_from_ref(ref)
-            return avail_position
-        else:
-            return copy.deepcopy(self.parent.avail_position)
-
-    def _getPrtNBPPst(self, ref):
-        if self._isRoot():
-            avail_position =  GenomeRange()
+            avail_position = GenomeRange()
             avail_position.init_none(ref)
             return avail_position
         else:

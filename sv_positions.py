@@ -12,7 +12,9 @@
 #       History:
 # =============================================================================
 '''
-from variant_info.SV import CNV, INDEL, INVERSION, TRANSVERTION
+from variant_info.SV import CNV, INDEL, INVERSION, TRANSLOCATION
+from collection import Counter
+import random
 
 
 class SVP(object):
@@ -24,7 +26,7 @@ class SVP(object):
         # [variant_length, variant_copy_number,
         # variant_genotype, variant_name])
         self.position = -1
-        self.sv_type = ""  # CNV, INDEL, TRANSVERSION, INVERSION
+        self.sv_type = ""  # CNV, INDEL, TRANSLOCATION, INVERSION
 
         self.sv = None
 
@@ -35,7 +37,8 @@ class SV_positions:
 
         self.svp_dict = {}
 
-    def add_posi_CNV(self, chrom, position, length, copy_number, genotype):
+    def add_posi_CNV(self, chrom, position, length, copy_number, genotype,
+                     ploidy_status):
         # if chroms[k] not in self.sv_positions.keys():
         # self.sv_positions[chroms[k]] = []
         # self.sv_positions[chroms[k]].append([
@@ -45,8 +48,8 @@ class SV_positions:
         # self.sv_list[i][2],
         # self.sv_list[i][-1]])
         # temp_Node.sv_list.append(
-            # [variant_length, variant_copy_number,
-             # variant_genotype, variant_name])
+        # [variant_length, variant_copy_number,
+        # variant_genotype, variant_name])
         temp_SVP = SVP()
         temp_SVP.sv_type = "CNV"
         temp_SVP.position = position
@@ -56,7 +59,29 @@ class SV_positions:
         temp_SVP.sv.copy_number = copy_number
         temp_SVP.sv.genotype = genotype
 
+        temp_SVP.sv.hapl_remain = self._getHaplRemain(genotype, ploidy_status)
+
         self._add_svp(chrom, temp_SVP)
+
+    def _getHaplRemain(self, genotype, ploidy_status):
+        if genotype is None:
+            return {}
+
+        hr = {}
+
+        gtc = Counter(genotype)
+        gpsc = Counter(ploidy_status)
+
+        for hapl_type in set(gtc.keys()) & set(gpsc.keys()):
+            number = 0
+            if gtc[hapl_type] >= gpsc[hapl_type]:
+                number = gpsc[hapl_type]
+            else:
+                number = gtc[hapl_type]
+
+            hr[hapl_type] = random.sample(range(gpsc[hapl_type]), number)
+
+        return hr
 
     def add_posi_INDEL(self, chrom, position, hapl_key, length, indel_type):
         temp_SVP = SVP()
@@ -81,7 +106,7 @@ class SV_positions:
 
         self._add_svp(chrom, temp_SVP)
 
-    def add_posi_TRANSVERSION(
+    def add_posi_TRANSLOCATION(
             self,
             chrom,
             position,
@@ -89,10 +114,10 @@ class SV_positions:
             hapl_key_to,
             length):
         temp_SVP = SVP()
-        temp_SVP.sv_type = "TRANSVERSION"
+        temp_SVP.sv_type = "TRANSLOCATION"
         temp_SVP.position = position
 
-        temp_SVP.sv = TRANSVERSION()
+        temp_SVP.sv = TRANSLOCATION()
         temp_SVP.sv.hapl_key_from = hapl_key_from
         temp_SVP.sv.hapl_key_to = hapl_key_to
         temp_SVP.sv.length = length
@@ -101,7 +126,6 @@ class SV_positions:
 
     # 此处似乎不需要
     # def add_ploidy(self, chrom, hapl, number):
-
 
     def _add_svp(self, chrom, svp):
         if chrom not in svp_dict.keys():

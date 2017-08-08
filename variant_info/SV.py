@@ -21,6 +21,7 @@ class CNV:
         self.length = -1
         self.copy_number = -1
         self.genotype = ""  # P0P1M0
+        self.hapl_remain = None
 
 
 class INSERTION:
