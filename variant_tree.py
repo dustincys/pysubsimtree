@@ -56,12 +56,41 @@ class VariantNode(NodeMixin):
         self.noDEL_position = None
 
     def outputRef(self, ref, outfilePrefix):
-        ref_ploidy = self._ref_make_ploidy()
-        ref_ploidy_snv = self._ref_make_snv()
-
+        ref_ploidy = self._ref_make_ploidy(copy.deepcopy(ref))
+        ref_ploidy_snv = self._ref_make_snv(ref_ploidy)
         variant_ref = self.breakpoints.generateFa(ref_ploidy_snv)
-
         outputFa(variant_ref, outfilePrefix+self.name+".fa")
+
+    def _ref_make_ploidy(self, ref):
+        ref_ploidy = {}
+        for chrom in self.ploidy_status.keys():
+            if chrom not in ref_ploidy.keys():
+                ref_ploidy[chrom] = {}
+
+            psc = Counter(self.ploidy_status[chrom])
+            for hapl_type in psc.keys():
+                if hapl_type not in ref_ploidy[chrom].keys():
+                    ref_ploidy[chrom][hapl_type] = []
+
+                for i in range(psc[hapl_type]):
+                    ref_ploidy[chrom][hapl_type].append(
+                        ref[chrom][hapl_type][0])
+
+        return ref_ploidy
+
+    def _ref_make_snv(self, ref_ploidy):
+        # 与breakpoint结构一致
+        for chrom in self.snv_positions.keys():
+            for hapl_type in self.snv_positions[chrom].keys():
+                for hapl_idx in \
+                        range(len(self.snv_positions[chrom][hapl_type])):
+                    lstr = list(ref_ploidy[chrom][hapl_type][hapl_idx])
+                    for snvp in self.snv_positions[chrom][hapl_type][hapl_idx]:
+                        lstr[snvp.position] = snvp.B_allele
+
+                    ref_ploidy[chrom][hapl_type][hapl_idx] = ''.join(lstr)
+
+        return ref_ploidy
 
     def outputVartPosi(self, outfilePrefix):
         # self.sv_positions[chroms[k]].append([
@@ -208,7 +237,6 @@ class VariantNode(NodeMixin):
 
                     hapl_remain = noDELCNV.sv.hapl_remain
 
-
                     position = noDELCNV.position\
                         + random.sample(range(length), 1)[0]
 
@@ -260,9 +288,9 @@ class VariantNode(NodeMixin):
 
         for hapl_type in self.breakpoints.breaks_list[chrom].keys():
             for hapl_index in range(len(
-                self.breakpoints.breaks_list[chrom][hapl_type])):
+                    self.breakpoints.breaks_list[chrom][hapl_type])):
                 strBps = filter(lambda item: item.insert_str is not None,
-                                self.breakpoints.breaks_list\
+                                self.breakpoints.breaks_list
                                 [chrom][hapl_type][hapl_index])
                 if len(strBps) > 1:
                     return strBps
@@ -545,7 +573,6 @@ class VariantTree(object):
                                variant_type]
                     self._add2node(
                         variant, 1, subclonal_name, variant_nodes)
-
 
         self._linkNode(variant_nodes)
 
