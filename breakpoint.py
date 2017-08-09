@@ -127,10 +127,10 @@ class BreakPoints():
             hif = vp.sv.hapl_idx_from
             hit = vp.sv.hapl_idx_to
 
-            bp_start = self._pairedBP("DELETION", chrom, hapl_type, hapl_idx,
-                                      vp.position, vp.position+vp.sv.length)
-            bp_end = self._pairedBP("DELETION", chrom, hapl_type, hapl_idx,
-                                    vp.position+vp.sv.length, vp.position)
+            bp_start = self._pairedBP("DELETION", chrom, htf, hif,
+                                      position, position+length)
+            bp_end = self._pairedBP("DELETION", chrom, htf, hif,
+                                    position+length, position)
 
             self._breakAppend(ploidy_status, chrom, htf, hif, bp_start)
             self._breakAppend(ploidy_status, chrom, htf, hif, bp_end)
@@ -139,10 +139,10 @@ class BreakPoints():
             bp.chrom = vp.sv.chrom_to
             bp.hapl_type = htt
             bp.hapl_idx = hit
-            bp.position = self._getRandomPosi(bp.chrom, avail_position):
+            bp.position = self._getRandomPosi(bp.chrom, avail_position)
             bp.name = "INSERTION"
             bp.insertStr = ref[chrom][htf][hif][position-1: position+length]
-            self._breakAppend(ploidy_status, chrom, hapl_type, hapl_idx, bp)
+            self._breakAppend(ploidy_status, chrom, htt, hit, bp)
 
     def _generateInvsBPs(self, chrom, vps, ploidy_status, ref):
         for vp in vps:
@@ -197,9 +197,10 @@ class BreakPoints():
             # self.hapl_idx = -1
             hapl_type = vp.sv.hapl_type
             hapl_idx = vp.sv.hapl_idx
-            position = vp.sv.position
-
             length = vp.sv.length
+
+            position = vp.position
+
             insertStr = randomCNA(length)
 
             bp = Break()
@@ -230,7 +231,7 @@ class BreakPoints():
         return newFa
 
     def _bpsHasChrom(self, chrom):
-        return chrom in self.breaks_list.keys():
+        return chrom in self.breaks_list.keys()
 
     def _bpsHasChromHap(self, chrom, hapl_type):
         return self._bpsHasChrom(chrom) and hapl_type in\
@@ -311,6 +312,8 @@ class BreakPoints():
         """
         生成duplication copy
         """
+        #此时的ref是经过了ploidy和snv之后的，以便于生成cnv
+
         # dic value: 位置、变异长度、拷贝数、基因型、名称
         # 注意生成多重ploidy的情况
 
@@ -345,8 +348,7 @@ class BreakPoints():
 
                         bp.insertStr = ref[chrom][genoHap][hapi][
                             vp.position, vp.position+vp.sv.length]
-                        else:
-                            print "Error"
+
                         self._breakAppend(ploidy_status, chrom,
                                           hapl_type, hapl_idx, bp)
 
@@ -369,7 +371,7 @@ class BreakPoints():
                         len(self.breaks_list[chrom][hapl_type])):
                     for i in range(hapl_idx -
                                    len(self.breaks_list[chrom][hapl_type]) + 1):
-                    self.breaks_list[chrom][hapl_type].append([])
+                        self.breaks_list[chrom][hapl_type].append([])
 
         self.breaks_list[chrom][hapl_type][hapl_idx].append(bp)
 

@@ -12,8 +12,8 @@
 #       History:
 # =============================================================================
 '''
-from variant_info.SV import CNV, INDEL, INVERSION, TRANSLOCATION
-from collection import Counter
+from variant_info.SV import CNV, INSERTION, DELETION, INVERTION, TRANSLOCATION
+from collections import Counter
 import random
 
 
@@ -83,52 +83,74 @@ class SV_positions:
 
         return hr
 
-    def add_posi_INDEL(self, chrom, position, hapl_key, length, indel_type):
+    def add_posi_INSERTION(self, chrom, hapl_type, hapl_idx, position, length):
         temp_SVP = SVP()
-        temp_SVP.sv_type = "INDEL"
+        temp_SVP.sv_type = "INSERTION"
         temp_SVP.position = position
 
-        temp_SVP.sv = INDEL()
-        temp_SVP.sv.indel_type = indel_type
-        temp_SVP.sv.hapl_key = hapl_key
+        temp_SVP.sv = INSERTION()
+        temp_SVP.sv.hapl_type = hapl_type
+        temp_SVP.sv.hapl_idx = hapl_idx
         temp_SVP.sv.length = length
 
         self._add_svp(chrom, temp_SVP)
 
-    def add_posi_INVERSION(self, chrom, position, hapl_key, length):
+    def add_posi_DELETION(self, chrom, hapl_type, hapl_idx, position, length):
         temp_SVP = SVP()
-        temp_SVP.sv_type = "INVERSION"
+        temp_SVP.sv_type = "DELETION"
         temp_SVP.position = position
 
-        temp_SVP.sv = INVERSION()
-        temp_SVP.sv.hapl_key = hapl_key
+        temp_SVP.sv = DELETION()
+        temp_SVP.sv.hapl_type = hapl_type
+        temp_SVP.sv.hapl_idx = hapl_idx
+        temp_SVP.sv.length = length
+
+        self._add_svp(chrom, temp_SVP)
+
+    def add_posi_INVERTION(self, chrom, hapl_type, hapl_idx, position, length):
+        temp_SVP = SVP()
+        temp_SVP.sv_type = "INVERTION"
+        temp_SVP.position = position
+
+        temp_SVP.sv = INVERTION()
+        temp_SVP.sv.hapl_type = hapl_type
+        temp_SVP.sv.hapl_idx = hapl_idx
         temp_SVP.sv.length = length
 
         self._add_svp(chrom, temp_SVP)
 
     def add_posi_TRANSLOCATION(
             self,
-            chrom,
-            position,
-            hapl_key_from,
-            hapl_key_to,
+            chrom_from,
+            position_from,
+            hapl_type_from,
+            hapl_idx_from,
+            chrom_to,
+            hapl_type_to,
+            hapl_idx_to,
             length):
+
         temp_SVP = SVP()
         temp_SVP.sv_type = "TRANSLOCATION"
-        temp_SVP.position = position
+        temp_SVP.position = position_from
 
         temp_SVP.sv = TRANSLOCATION()
-        temp_SVP.sv.hapl_key_from = hapl_key_from
-        temp_SVP.sv.hapl_key_to = hapl_key_to
+
+        temp_SVP.sv.chrom_to = chrom_to
+
+        temp_SVP.sv.hapl_type_from = hapl_type_from
+        temp_SVP.sv.hapl_type_to = hapl_type_to
+        temp_SVP.sv.hapl_idx_from = hapl_idx_from
+        temp_SVP.sv.hapl_idx_to = hapl_idx_to
         temp_SVP.sv.length = length
 
-        self._add_svp(chrom, temp_SVP)
+        self._add_svp(chrom_from, temp_SVP)
 
     # 此处似乎不需要
     # def add_ploidy(self, chrom, hapl, number):
 
     def _add_svp(self, chrom, svp):
-        if chrom not in svp_dict.keys():
+        if chrom not in self.svp_dict.keys():
             self.svp_dict[chrom] = [svp]
         else:
             self.svp_dict[chrom].append(svp)

@@ -7,7 +7,7 @@ import ConfigParser
 import copy
 
 from variant_tree import VariantTree
-from utils import read_pf_config, reference, read_dbsnp, generate_normal
+from utils.utils import read_pf_config, reference, read_dbsnp, generate_normal
 
 
 def main():
@@ -34,13 +34,13 @@ def main():
                 cf = ConfigParser.ConfigParser()
                 cf.read(opts.config)
 
-                SV_config_file = cf.get("pysim_settings", "SV_config_file")
-                ref_fasta = cf.get("pysim_settings", "ref_fasta")
-                dbsnp = cf.get("pysim_settings", "dbsnp")
-                germline_num = cf.getint("pysim_settings", "germline_num")
-                hyp_rate = cf.getfloat("pysim_settings", 'hyp_rate')
-                chrome_can = cf.get("pysim_settings", "chrome")
-                pf_file_name = cf.get("pysim_settings",
+                SV_config_file = cf.get("pysubsimtree_settings", "SV_config_file")
+                ref_fasta = cf.get("pysubsimtree_settings", "ref_fasta")
+                dbsnp = cf.get("pysubsimtree_settings", "dbsnp")
+                germline_num = cf.getint("pysubsimtree_settings", "germline_num")
+                hyp_rate = cf.getfloat("pysubsimtree_settings", 'hyp_rate')
+                chrome_can = cf.get("pysubsimtree_settings", "chrome")
+                pf_file_name = cf.get("pysubsimtree_settings",
                                       "population_fraction_config_file")
                 pf_dict = read_pf_config(pf_file_name)
                 ref = reference(ref_fasta)

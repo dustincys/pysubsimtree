@@ -76,8 +76,8 @@ def reference(ref_name):
         newline = line.strip()
 
         if newline.startswith('>'):
-            if '_' in newline:
-                chr_split = newline.split('_')
+            if '-' in newline:
+                chr_split = newline.split('-')
             else:
                 chr_split = [newline]
 
@@ -171,8 +171,11 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
     for key in ref_dic:
         # 表示fasta 上是不是含有paternal 和maternal
         # 正常情况下hapl 是 [0]
-        hapl = [k for k in range(len(ref_dic[key]))]
-        tmp_str_list = ref_dic[key]
+        #hapl = [k for k in range(len(ref_dic[key]))]
+        hapl = ref_dic[key].keys()
+
+        tmp_str_list = [ref_dic[key][hapl[0]][0],ref_dic[key][hapl[1]][0]]
+
         str_list = []
         for tmp in tmp_str_list:
             str_list.append(list(tmp))
@@ -181,7 +184,7 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
             for line in random_list:
                 if total_list[i] == 0:
                     # 随机获取一个位置
-                    hap = random.sample(hapl, 1)[0]
+                    hap = random.sample(range(len(hapl)), 1)[0]
                     # hap表示parternal or maternal ??
                     old = str_list[hap][int(line[0])-1]
                     str_list[hap][int(line[0])-1] = line[-1]
@@ -189,7 +192,7 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
                         key + '\t' + line[0] + '\t' + old + '\t' + line[-1] + '\t' +
                         str(hap + 1) + '\n')
                 else:
-                    for t in hapl:
+                    for t in range(len(hapl)):
                         old = str_list[t][int(line[0])-1]
                         str_list[t][int(line[0])-1] = line[-1]
                     outfile.write(
@@ -203,14 +206,14 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
         else:
             for line in snp_dic[key]:
                 if total_list[i] == 0:
-                    hap = random.sample(hapl, 1)[0]
+                    hap = random.sample(range(len(hapl)), 1)[0]
                     old = str_list[hap][int(line[0])-1]
                     str_list[hap][int(line[0])-1] = line[-1]
                     outfile.write(
                         key + '\t' + line[0] + '\t' + old + '\t' + line[-1] + '\t' +
                         str(hap + 1) + '\n')
                 else:
-                    for t in hapl:
+                    for t in range(len(hapl)):
                         old = str_list[t][int(line[0])-1]
                         str_list[t][int(line[0])-1] = line[-1]
                     outfile.write(
@@ -222,11 +225,11 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
                 else:
                     snp_list[key].append(int(line[0]))
         tmp_str = []
-        for tmp in str_list:
-            tmp_str.append(''.join(tmp))
+        for i in range(len(str_list)):
+            tmp_str.append(''.join(str_list[i]))
             # 将加入snp之后的放入ref_dic中，现在ref中的内容是另一条更改之后的，
             # 所以这里就没有paternal和maternal 之分了。
-        ref_dic[key] = tmp_str
+            ref_dic[key][hapl[i]][0] = tmp_str
     outfile.close()
     return [ref_dic, snp_list]
 

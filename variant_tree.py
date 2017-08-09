@@ -23,7 +23,7 @@ from utils.utils import outputFa, SNP
 from anytree import NodeMixin
 
 import copy
-from collection import Counter
+from collections import Counter
 import random
 
 
@@ -135,16 +135,20 @@ class VariantNode(NodeMixin):
 
             # 第一步，生成非结构变异，是否与结构变异出现重合现象？
             # 生成的位置包括： available中位置， insertion中的位置
-            self._make_snv()
 
-        # 第二步，生成结构变异
-            self._make_sv(ref)
+            ref_ploidy = self._ref_make_ploidy(copy.deepcopy(ref))
+            ref_ploidy_snv = self._ref_make_snv(ref_ploidy)
+
+            # 第二步，生成结构变异, 此处是生成了ploidy的ref
+            self._make_sv(ref_ploidy_snv)
+            self._make_snv(ref_ploidy_snv)
 
     def _init_node(self, ref):
         self.avail_position = self._getPrtAvailPst(ref)
         self.sv_positions = self._getPrtSVPosis()
         self.snv_positions = self._getPrtSNVPosis()
         self.breakpoints = self._getPrtBreakpoints()
+        self.ploidy_status = self._getPrtPloidyStatus()
         self.noDEL_position = self._getPrtNBPPst(ref)
 
     def _make_ploidy(self):
@@ -208,7 +212,6 @@ class VariantNode(NodeMixin):
             # ploidy_type = snv[3]
             number = snv[4]
             # variant_type = snv[5]
-
             # psc = Counter(self.ploidy_status[chrom])
 
             if isOverlap == "TRUE":
@@ -233,10 +236,7 @@ class VariantNode(NodeMixin):
 
                     noDELCNV = random.sample(noDELCNVpois, 1)[0]
                     length = noDELCNV.sv.length
-                    svgc = Counter(noDELCNV.sv.genotype)
-
                     hapl_remain = noDELCNV.sv.hapl_remain
-
                     position = noDELCNV.position\
                         + random.sample(range(length), 1)[0]
 
@@ -250,7 +250,6 @@ class VariantNode(NodeMixin):
                                                temp_hapl_index,
                                                position, B_allele, isHetero,
                                                isOverlap)
-
             else:
 
                 positions = random.sample(self.avail_position[chrom], number)
@@ -302,7 +301,7 @@ class VariantNode(NodeMixin):
             lambda item: item.sv_type == "CNV" and item.sv.genotype != "NONE",
             self.SV_positions[chrom])
 
-    def _make_sv(self):
+    def _make_sv(self, ref):
         new_positions = self._generateNewPosition(ref)
         # noBP remove deletion seg
         self.breakpoints.generateBPs(new_positions, self.avail_position, ref)
@@ -346,26 +345,64 @@ class VariantNode(NodeMixin):
                             chrom, posi, length, copy_number, genotype,
                             self.ploidy_status)
 
-                    if variant_name == "INVERSION":
-                        genotype = sv[2]
+                    if variant_name == "INVERTION":
+
+                        hapl_type = sv[2]
+                        hapl_idx = sv[3]
+                        ploidy_status = sv[4]
+
                         self.sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
+                            chrom, hapl_type, hapl_idx, position, length)
                         current_sv_positions.add_posi_INVERSION(
-                            chrom, posi, length, genotype)
+                            chrom, hapl_type, hapl_idx, position, length)
 
                     if variant_name == "DELETION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_DELETION(
-                            chrom, posi, length, genotype)
 
-                    if variant_name == "TRANSVERSION":
-                        genotype = sv[2]
-                        self.sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
-                        current_sv_positions.add_posi_TRANSVERSION(
-                            chrom, posi, length, genotype)
+                        hapl_type = sv[2]
+                        hapl_idx = sv[3]
+                        ploidy_status = sv[4]
+
+                        self.sv_positions.add_posi_DELETION(
+                            chrom, hapl_type, hapl_idx, position, length)
+                        current_sv_positions.add_posi_DELETION(
+                            chrom, hapl_type, hapl_idx, position, length)
+
+                    if variant_name == "INSERTION":
+
+                        hapl_type = sv[2]
+                        hapl_idx = sv[3]
+                        ploidy_status = sv[4]
+
+                        self.sv_positions.add_posi_INSERTION(
+                            chrom, hapl_type, hapl_idx, position, length)
+                        current_sv_positions.add_posi_INSERTION(
+                            chrom, hapl_type, hapl_idx, position, length)
+
+                    if variant_name == "TRANSLOCATION":
+                        hapl_type_from = sv[2]
+                        hapl_idx_from = int(sv[3])
+                        chrom_to = sv[4]
+                        hapl_type_to = sv[5]
+                        hapl_idx_to = int(sv[6])
+                        ploidy_genotype = sv[7]
+
+                        self.sv_positions.add_posi_TRANSVERSION(chrom_from,
+                                                                position_from,
+                                                                hapl_type_from,
+                                                                hapl_idx_from,
+                                                                chrom_to,
+                                                                hapl_type_to,
+                                                                hapl_idx_to,
+                                                                length)
+
+                        current_sv_positions.add_posi_TRANSVERSION(chrom_from,
+                                                                position_from,
+                                                                hapl_type_from,
+                                                                hapl_idx_from,
+                                                                chrom_to,
+                                                                hapl_type_to,
+                                                                hapl_idx_to,
+                                                                length)
                     break
                 else:
                     count = count+1
@@ -415,6 +452,15 @@ class VariantNode(NodeMixin):
             return avail_position
         else:
             return copy.deepcopy(self.parent.noDEL_position)
+
+    def _getPrtPloidyStatus(self, ref):
+        if self._isRoot():
+            ps = {}
+            for chrom in ref.keys():
+                ps[chrom] = "PM"
+            return ps
+        else:
+            return copy.deepcopy(self.parent.ploidy_status)
 
     def _isRoot(self):
         if self.parent is None:
@@ -487,65 +533,87 @@ class VariantTree(object):
 
                     elif variant_name == "INVERTION":
                         chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        number = int(list_line[6])
+                        hapl_type = list_line[4]
+                        hapl_idx = int(list_line[5])
+                        variant_length = int(list_line[6])
+                        ploidy_status = list_line[7]
+                        number = int(list_line[8])
 
                         variant = [
                             chrom,
                             variant_length,
-                            variant_genotype,
+                            hapl_type,
+                            hapl_idx,
+                            ploidy_status,
                             variant_name,
                             variant_type]
+
                         self._add2node(
                             variant, number, subclonal_name, variant_nodes)
 
                     elif variant_name == "INSERTION":
                         chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
+                        hapl_type = list_line[4]
+                        hapl_idx = int(list_line[5])
+                        variant_length = int(list_line[6])
+                        ploidy_status = list_line[7]
+                        number = int(list_line[8])
 
                         variant = [
                             chrom,
                             variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
+                            hapl_type,
+                            hapl_idx,
+                            ploidy_status,
                             variant_name,
                             variant_type]
+
                         self._add2node(
                             variant, number, subclonal_name, variant_nodes)
 
                     elif variant_name == "DELETION":
                         chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
+                        hapl_type = list_line[4]
+                        hapl_idx = int(list_line[5])
+                        variant_length = int(list_line[6])
+                        ploidy_status = list_line[7]
+                        number = int(list_line[8])
 
                         variant = [
                             chrom,
                             variant_length,
-                            variant_genotype,
-                            ploidy_genotype,
+                            hapl_type,
+                            hapl_idx,
+                            ploidy_status,
                             variant_name,
                             variant_type]
+
                         self._add2node(
                             variant, number, subclonal_name, variant_nodes)
-                    elif variant_name == "TRANSVERSION":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_genotype = list_line[5]
-                        ploidy_genotype = list_line[6]
-                        number = int(list_line[7])
+
+                    elif variant_name == "TRANSLOCATION":
+                        chrom_from = list_line[3]
+                        hapl_type_from = list_line[4]
+                        hapl_idx_from = int(list_line[5])
+                        variant_length = int(list_line[6])
+                        chrom_to = list_line[7]
+                        hapl_type_to = list_line[8]
+                        hapl_idx_to = int(list_line[9])
+                        ploidy_genotype = list_line[10]
+                        number = int(list_line[11])
 
                         variant = [
+                            chrom_from,
                             variant_length,
-                            variant_genotype,
+                            hapl_type_from,
+                            hapl_idx_from,
+                            chrom_to,
+                            hapl_type_to,
+                            hapl_idx_to,
                             ploidy_genotype,
                             variant_name,
                             variant_type]
+
                         self._add2node(
                             variant, number, subclonal_name, variant_nodes)
                     else:

@@ -16,7 +16,7 @@
 import numpy as np
 import random
 
-from utils import compute_range
+from utils.utils import compute_range
 
 
 class GenomeRange(object):
