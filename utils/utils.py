@@ -226,10 +226,10 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
                     snp_list[key].append(int(line[0]))
         tmp_str = []
         for i in range(len(str_list)):
-            tmp_str.append(''.join(str_list[i]))
+            tmp_str = ''.join(str_list[i])
             # 将加入snp之后的放入ref_dic中，现在ref中的内容是另一条更改之后的，
             # 所以这里就没有paternal和maternal 之分了。
-            ref_dic[key][hapl[i]][0] = tmp_str
+            ref_dic[key][hapl[i]] = [tmp_str]
     outfile.close()
     return [ref_dic, snp_list]
 

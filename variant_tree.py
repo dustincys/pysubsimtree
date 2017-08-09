@@ -31,13 +31,12 @@ variantNodeType = ["SV", "SNV", "PLOIDY"]
 
 
 class VariantNode(NodeMixin):
-    def __init__(self, name, ref, ploidy_type, parent=None, variant_type="SV"):
+    def __init__(self, name, parent=None, variant_type="SV"):
         assert variant_type in variantNodeType
 
         self.name = name
         self.parent = parent
         # 用来传递生成ＳＮＶ
-        self.ref = ref
 
         self.variant_type = variant_type
 
@@ -80,12 +79,12 @@ class VariantNode(NodeMixin):
 
     def _ref_make_snv(self, ref_ploidy):
         # 与breakpoint结构一致
-        for chrom in self.snv_positions.keys():
-            for hapl_type in self.snv_positions[chrom].keys():
+        for chrom in self.snv_positions.snvp_dict.keys():
+            for hapl_type in self.snv_positions.snvp_dict[chrom].keys():
                 for hapl_idx in \
-                        range(len(self.snv_positions[chrom][hapl_type])):
+                        range(len(self.snv_positions.snvp_dict[chrom][hapl_type])):
                     lstr = list(ref_ploidy[chrom][hapl_type][hapl_idx])
-                    for snvp in self.snv_positions[chrom][hapl_type][hapl_idx]:
+                    for snvp in self.snv_positions.snvp_dict[chrom][hapl_type][hapl_idx]:
                         lstr[snvp.position] = snvp.B_allele
 
                     ref_ploidy[chrom][hapl_type][hapl_idx] = ''.join(lstr)
@@ -126,7 +125,7 @@ class VariantNode(NodeMixin):
 
         """
         # 首先初始化节点, 即从父节点继承信息
-        self._init_node()
+        self._init_node(ref)
 
         # 第一步，生成ploidy 变异
         if self.variant_type == "PLOIDY":
@@ -148,7 +147,7 @@ class VariantNode(NodeMixin):
         self.sv_positions = self._getPrtSVPosis()
         self.snv_positions = self._getPrtSNVPosis()
         self.breakpoints = self._getPrtBreakpoints()
-        self.ploidy_status = self._getPrtPloidyStatus()
+        self.ploidy_status = self._getPrtPloidyStatus(ref)
         self.noDEL_position = self._getPrtNBPPst(ref)
 
     def _make_ploidy(self):
@@ -272,7 +271,7 @@ class VariantNode(NodeMixin):
                         temp_hapl_index = random.sample(
                             range(len(ref[chrom][temp_hapl_type])), 1)[0]
                         B_allele = SNP(
-                            self.ref[chrom][temp_hapl_type][temp_hapl_index][pi]
+                            ref[chrom][temp_hapl_type][temp_hapl_index][pi]
                         )
                         for hapl_type in ref[chrom].keys():
                             for hapl_index in range(len(ref[chrom][hapl_type])):
@@ -302,10 +301,11 @@ class VariantNode(NodeMixin):
             self.SV_positions[chrom])
 
     def _make_sv(self, ref):
-        new_positions = self._generateNewPosition(ref)
+        new_positions = self._generateNewPosition()
         # noBP remove deletion seg
-        self.breakpoints.generateBPs(new_positions, self.avail_position, ref)
-        pass
+        self.breakpoints.generateBPs(new_positions, self.avail_position,
+                                     self.noDEL_position, ref,
+                                     self.ploidy_status)
 
     def _generateNewPosition(self):
         current_sv_positions = SV_positions()
@@ -352,9 +352,9 @@ class VariantNode(NodeMixin):
                         ploidy_status = sv[4]
 
                         self.sv_positions.add_posi_INVERSION(
-                            chrom, hapl_type, hapl_idx, position, length)
+                            chrom, hapl_type, hapl_idx, posi, length)
                         current_sv_positions.add_posi_INVERSION(
-                            chrom, hapl_type, hapl_idx, position, length)
+                            chrom, hapl_type, hapl_idx, posi, length)
 
                     if variant_name == "DELETION":
 
@@ -363,9 +363,9 @@ class VariantNode(NodeMixin):
                         ploidy_status = sv[4]
 
                         self.sv_positions.add_posi_DELETION(
-                            chrom, hapl_type, hapl_idx, position, length)
+                            chrom, hapl_type, hapl_idx, posi, length)
                         current_sv_positions.add_posi_DELETION(
-                            chrom, hapl_type, hapl_idx, position, length)
+                            chrom, hapl_type, hapl_idx, posi, length)
 
                     if variant_name == "INSERTION":
 
@@ -374,9 +374,9 @@ class VariantNode(NodeMixin):
                         ploidy_status = sv[4]
 
                         self.sv_positions.add_posi_INSERTION(
-                            chrom, hapl_type, hapl_idx, position, length)
+                            chrom, hapl_type, hapl_idx, posi, length)
                         current_sv_positions.add_posi_INSERTION(
-                            chrom, hapl_type, hapl_idx, position, length)
+                            chrom, hapl_type, hapl_idx, posi, length)
 
                     if variant_name == "TRANSLOCATION":
                         hapl_type_from = sv[2]
@@ -387,7 +387,7 @@ class VariantNode(NodeMixin):
                         ploidy_genotype = sv[7]
 
                         self.sv_positions.add_posi_TRANSVERSION(chrom_from,
-                                                                position_from,
+                                                                posi,
                                                                 hapl_type_from,
                                                                 hapl_idx_from,
                                                                 chrom_to,
@@ -396,7 +396,7 @@ class VariantNode(NodeMixin):
                                                                 length)
 
                         current_sv_positions.add_posi_TRANSVERSION(chrom_from,
-                                                                position_from,
+                                                                posi,
                                                                 hapl_type_from,
                                                                 hapl_idx_from,
                                                                 chrom_to,
@@ -411,7 +411,7 @@ class VariantNode(NodeMixin):
                     else:
                         break
 
-        self.SV_positions.sorted()
+        self.sv_positions.sorted()
         current_sv_positions.sorted()
 
         return current_sv_positions
@@ -654,7 +654,7 @@ class VariantTree(object):
             temp_Node = variant_nodes[subclonal_name]
 
         for i in range(number):
-            temp_Node.variant_list = temp_Node.variant_list + variant
+            temp_Node.variant_list = temp_Node.variant_list + [variant]
 
     def _linkNode(self, variant_nodes):
         if "1" not in variant_nodes.keys():

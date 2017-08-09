@@ -25,7 +25,7 @@ class GenomeRange(object):
 
     def __init__(self):
         """initialized by ref"""
-        self._genome_range = None
+        self._genome_range = {}
 
     def init_none(self, ref):
         for chrom in ref.keys():
@@ -56,5 +56,4 @@ class GenomeRange(object):
     def addRange(self, chrom, start, end):
         pre_range = set(self._genome_range[chrom])
         add_range = set(np.arange(start, end))
-        self._genome_range[chrom] = np.array(list(pre_range + add_range))
-
+        self._genome_range[chrom] = np.array(list(pre_range | add_range))

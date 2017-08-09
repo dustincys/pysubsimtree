@@ -82,39 +82,42 @@ class BreakPoints():
             for i in range(self.breaks_list[chrom][hapl])
             if i not in hapl_idxes]
 
-    def generateBPs(self, variant_positions, avail_position, noDEL_position, ref):
+    def generateBPs(self, variant_positions, avail_position, noDEL_position,
+                    ref, ploidy_status):
 
         for chrom in variant_positions.svp_dict.keys():
             # CNV
             vps_CNV = filter(lambda item: item.sv_type == "CNV",
-                             variant_positions[chrom])
-            self._generateCDupBPs(chrom, vps_CNV, avail_position, ref)
+                             variant_positions.svp_dict[chrom])
+            self._generateCDupBPs(chrom, vps_CNV, avail_position,
+                                  noDEL_position, ref,
+                                  ploidy_status)
             self._generateCDelBPs(chrom, vps_CNV, noDEL_position, ploidy_status)
 
             # INSERTION
             vp_INSERTION = filter(
                 lambda item: item.sv_type == "INSERTION",
-                variant_positions[chrom])
+                variant_positions.svp_dict[chrom])
             self._generateInsBPs(chrom, vp_INSERTION,
                                  avail_position, ploidy_status)
 
             # DELETION
             vp_DELETION = filter(
                 lambda item: item.sv_type == "DELETION",
-                variant_positions[chrom])
+                variant_positions.svp_dict[chrom])
             self._generateDelsBPs(chrom, vp_DELETION,
                                   avail_position, noDEL_position, ploidy_status)
 
             vp_INVERSION = filter(
                 lambda item: item.sv_type == "INVERSION",
-                variant_positions[chrom])
+                variant_positions.svp_dict[chrom])
             self._generateInvsBPs(chrom, vp_INVERSION,
                                   avail_position, noDEL_position, ploidy_status,
                                   ref)
 
             vp_TRANSLOCATION = filter(
                 lambda item: item.sv_type == "TRANSLOCATION",
-                variant_positions[chrom])
+                variant_positions.svp_dict[chrom])
             self._generateTransBPs(chrom, vp_TRANSLOCATION,
                                    avail_position, noDEL_position, ploidy_status)
 
@@ -308,7 +311,8 @@ class BreakPoints():
 
         return pois
 
-    def _generateCDupBPs(self, chrom, vps, avail_position, ref, ploidy_status):
+    def _generateCDupBPs(self, chrom, vps, avail_position, noDEL_position,
+                         ref, ploidy_status):
         """
         生成duplication copy
         """
@@ -323,7 +327,8 @@ class BreakPoints():
             if genotype == "NONE":
                 continue
             else:
-                noDEL_position.addRange(chrom, vp.position, vp.sv.length)
+                noDEL_position.addRange(chrom, vp.position,
+                                        vp.position+vp.sv.length)
 
                 genoCounter = Counter(genotype)
 
@@ -411,7 +416,7 @@ class BreakPoints():
 
                 # 出现纯合时候, No key
                 if len(genoCounter.keys()) < len(psc.keys()):
-                    for hapl_type in set(psc.keys)-set(genoCounter.keys()):
+                    for hapl_type in set(psc.keys())-set(genoCounter.keys()):
                         for hapl_idx in range(psc[hapl_type]):
                             bp_start = self._pairedBP("DELETION",
                                                       chrom, hapl_type, hapl_idx,
