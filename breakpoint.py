@@ -105,23 +105,22 @@ class BreakPoints():
             vp_DELETION = filter(
                 lambda item: item.sv_type == "DELETION",
                 variant_positions.svp_dict[chrom])
-            self._generateDelsBPs(chrom, vp_DELETION,
-                                  avail_position, noDEL_position, ploidy_status)
+            self._generateDelsBPs(chrom, vp_DELETION, ploidy_status)
 
-            vp_INVERSION = filter(
-                lambda item: item.sv_type == "INVERSION",
+            vp_INVERTION = filter(
+                lambda item: item.sv_type == "INVERTION",
                 variant_positions.svp_dict[chrom])
-            self._generateInvsBPs(chrom, vp_INVERSION,
-                                  avail_position, noDEL_position, ploidy_status,
+            self._generateInvsBPs(chrom, vp_INVERTION,
+                                  ploidy_status,
                                   ref)
 
             vp_TRANSLOCATION = filter(
                 lambda item: item.sv_type == "TRANSLOCATION",
                 variant_positions.svp_dict[chrom])
-            self._generateTransBPs(chrom, vp_TRANSLOCATION,
-                                   avail_position, noDEL_position, ploidy_status)
+            self._generateTransBPs(chrom, vp_TRANSLOCATION, avail_position,
+                                   ploidy_status, ref)
 
-    def _generateTransBPs(self, chrom, vps, ref, ploidy_status):
+    def _generateTransBPs(self, chrom, vps, avail_position, ploidy_status, ref):
         for vp in vps:
             position = vp.position
             length = vp.sv.length
@@ -152,16 +151,17 @@ class BreakPoints():
             hapl_type = vp.sv.hapl_type
             hapl_idx = vp.sv.hapl_idx
 
-            insertStr = ref[chrom][hapl_type][hapl_idx]\
-                [vp.position: vp.position+vp.sv.length][::-1]
+            insertStr =\
+                ref[chrom][hapl_type][hapl_idx][
+                    vp.position: vp.position+vp.sv.length][::-1]
 
             bp_start = self._pairedBP(
-                "INVERSION",
+                "INVERTION",
                 chrom, hapl_type, hapl_idx,
                 vp.position,
                 vp.position+vp.sv.length,
                 insertStr)
-            bp_end = self._pairedBP("INVERSION",
+            bp_end = self._pairedBP("INVERTION",
                                     chrom, hapl_type, hapl_idx,
                                     vp.position+vp.sv.length,
                                     vp.position,
@@ -204,7 +204,7 @@ class BreakPoints():
 
             position = vp.position
 
-            insertStr = randomCNA(length)
+            insertStr = rand_DNA(length)
 
             bp = Break()
             bp.chrom = chrom
@@ -222,12 +222,12 @@ class BreakPoints():
             if not self._bpsHasChrom(chrom):
                 continue
             else:
-                for hapl_type in range(len(ref[chrom])):
+                for hapl_type in ref[chrom].keys():
                     if not self._bpsHasChromHap(chrom, hapl_type):
                         continue
                     else:
-                        for hapl_idx in range(
-                            len(self.breaks_list[chrom][hapl_type])):
+                        for hapl_idx in\
+                                range(len(self.breaks_list[chrom][hapl_type])):
                             newFa[chrom][hapl_type][hapl_idx] =\
                                 self._generateHapStr(chrom, hapl_type, hapl_idx,
                                                      ref)
@@ -247,8 +247,8 @@ class BreakPoints():
         bks = sorted(bks,
                      key=lambda item: (item.position, item.paired_position))
         posis = [0] + [bks[i].position for i in range(len(bks))] \
-            + [len(ref[chrom][hap_i])]
-        refSegs = [ref[chrom][hap_i][posis[i]:posis[i+1]] for i in
+            + [len(ref[chrom][hapl_type][hapl_idx])]
+        refSegs = [ref[chrom][hapl_type][hapl_idx][posis[i]:posis[i+1]] for i in
                    range(len(posis) - 1)]
 
         delStart = False
@@ -270,7 +270,7 @@ class BreakPoints():
                         if not delStart:
                             print "Error"
                         delStart = False
-                if bks[i].name == "INVERSION":
+                if bks[i].name == "INVERTION":
                     if bks[i].position < bks[i].paired_position:
                         if invStart:
                             print "Error"
@@ -287,10 +287,10 @@ class BreakPoints():
         pois = -1
         while True:
             # 从候选位置中抽取插入位置，位置pois - 1
-            pois = avail_position.sample1pois(chrom)
+            pois = avail_position.sample1posi(chrom)
             print "pois sampled :{}".format(pois)
             if avail_position.isOverlaped(chrom, pois-1, pois):
-                avail_position.takePois(chrom, pois-1, pois)
+                avail_position.takePosi(chrom, pois-1, pois)
                 break
             else:
                 continue
@@ -301,10 +301,10 @@ class BreakPoints():
         pois = -1
         while True:
             # 从候选位置中抽取插入位置，位置pois - 1
-            pois = avail_position.sample1pois(chrom)
+            pois = avail_position.sample1posi(chrom)
             print "pois sampled :{}".format(pois)
             if avail_position.isOverlaped(chrom, pois-1, pois+length):
-                avail_position.takePois(chrom, pois-1, pois+length)
+                avail_position.takePosi(chrom, pois-1, pois+length)
                 break
             else:
                 continue
@@ -316,7 +316,7 @@ class BreakPoints():
         """
         生成duplication copy
         """
-        #此时的ref是经过了ploidy和snv之后的，以便于生成cnv
+        # 此时的ref是经过了ploidy和snv之后的，以便于生成cnv
 
         # dic value: 位置、变异长度、拷贝数、基因型、名称
         # 注意生成多重ploidy的情况
@@ -342,7 +342,7 @@ class BreakPoints():
                         bp.chrom = chrom
                         bp.hapl_type = random.sample(['P', 'M'], 1)[0]
                         bp.hapl_idx = random.sample(
-                            range(bp.hapl_type), 1)[0]
+                            range(len(ref[chrom][bp.hapl_type])), 1)[0]
 
                         bp.position = self._getRandomPosi(
                             chrom, avail_position)
@@ -352,10 +352,10 @@ class BreakPoints():
                         hapi = random.sample(range(psc[genoHap]), 1)[0]
 
                         bp.insertStr = ref[chrom][genoHap][hapi][
-                            vp.position, vp.position+vp.sv.length]
+                            vp.position:vp.position+vp.sv.length]
 
                         self._breakAppend(ploidy_status, chrom,
-                                          hapl_type, hapl_idx, bp)
+                                          bp.hapl_type, bp.hapl_idx, bp)
 
     def _breakAppend(self, ploidy_status, chrom, hapl_type, hapl_idx, bp):
         # 此处为了进行ploidy操作，结构为 {chr1:{'P':[[bp1],[bp2]], 'M':[[bp3]]}}
@@ -419,7 +419,8 @@ class BreakPoints():
                     for hapl_type in set(psc.keys())-set(genoCounter.keys()):
                         for hapl_idx in range(psc[hapl_type]):
                             bp_start = self._pairedBP("DELETION",
-                                                      chrom, hapl_type, hapl_idx,
+                                                      chrom, hapl_type,
+                                                      hapl_idx,
                                                       vp.position,
                                                       vp.position+vp.sv.length)
                             bp_end = self._pairedBP("DELETION",
@@ -436,11 +437,12 @@ class BreakPoints():
                     if del_cp_num <= 0:
                         continue
                     else:
-                        del_cp_indexes = ramdom.sample(
+                        del_cp_indexes = random.sample(
                             range(psc[hapl_type]), del_cp_num)
                         for hapl_idx in del_cp_indexes:
                             bp_start = self._pairedBP("DELETION",
-                                                      chrom, hapl_type, hapl_idx,
+                                                      chrom, hapl_type,
+                                                      hapl_idx,
                                                       vp.position,
                                                       vp.position+vp.sv.length)
                             bp_end = self._pairedBP("DELETION",
@@ -459,8 +461,7 @@ class BreakPoints():
             hapl_type,
             hapl_idx,
             position,
-            paired_position,
-        insertStr = None):
+            paired_position, insertStr=None):
         """TODO: Docstring for _generateBPdeletion.
 
         :arg1: TODO

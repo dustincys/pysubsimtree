@@ -76,10 +76,10 @@ class SNV_positions:
 
         if chrom not in self.snvp_dict.keys():
             self.snvp_dict[chrom] = {}
-        if hapl_type not in self.snvp_dict[hapl_type].keys():
+        if hapl_type not in self.snvp_dict[chrom].keys():
             self.snvp_dict[chrom][hapl_type] = []
         if hapl_index >= len(self.snvp_dict[chrom][hapl_type]):
-            for i in range(hapl_index - len(self.snvp_dict[chrom][hapl_type])):
+            for i in range(hapl_index+1-len(self.snvp_dict[chrom][hapl_type])):
                 self.snvp_dict[chrom][hapl_type].append([])
 
         self.snvp_dict[chrom][hapl_type][hapl_index].append(snvp)

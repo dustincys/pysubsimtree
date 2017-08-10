@@ -82,9 +82,12 @@ class VariantNode(NodeMixin):
         for chrom in self.snv_positions.snvp_dict.keys():
             for hapl_type in self.snv_positions.snvp_dict[chrom].keys():
                 for hapl_idx in \
-                        range(len(self.snv_positions.snvp_dict[chrom][hapl_type])):
+                        range(len(self.snv_positions.snvp_dict
+                                  [chrom][hapl_type])):
                     lstr = list(ref_ploidy[chrom][hapl_type][hapl_idx])
-                    for snvp in self.snv_positions.snvp_dict[chrom][hapl_type][hapl_idx]:
+                    for snvp in\
+                            self.snv_positions.snvp_dict[
+                                                chrom][hapl_type][hapl_idx]:
                         lstr[snvp.position] = snvp.B_allele
 
                     ref_ploidy[chrom][hapl_type][hapl_idx] = ''.join(lstr)
@@ -107,16 +110,14 @@ class VariantNode(NodeMixin):
 
         with open(outfileName, 'w') as outfile:
             outfile.write(outfileHead)
-            for chrom in self.sv_positions.keys():
-                sv_items = self.sv_positions[chrom]
+            for chrom in self.sv_positions.svp_dict.keys():
+                sv_items = self.sv_positions.svp_dict[chrom]
                 for sv_item in sv_items:
                     outfile.write(
-                        "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(chrom,
-                                                                sv_item[0],
-                                                                sv_item[1],
-                                                                sv_item[2],
-                                                                sv_item[3],
-                                                                sv_item[4]))
+                        "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(
+                            chrom, sv_item.position, sv_item.sv.length,
+                            sv_item.sv.copy_number, sv_item.sv.genotype,
+                            sv_item.sv_type))
         pass
 
     def make(self, ref):
@@ -200,7 +201,7 @@ class VariantNode(NodeMixin):
 
     def _make_snv(self, ref):
         # 从avail_position 中生成非重合变异，
-        # 从sv_position和breakpoints的insert_str中生成重合的变异
+        # 从sv_position和breakpoints的insertStr中生成重合的变异
         # 只有非重合变异可以生成纯合突变
 
         snv_list = filter(lambda item: item[-1] == "SNV", self.variant_list)
@@ -226,10 +227,10 @@ class VariantNode(NodeMixin):
 
                 for i in range(number_bp):
                     bp = random.sample(strBps, 1)[0]
-                    position = random.sample(range(len(bp.insert_str)), 1)[0]
-                    bp_lstr = list(bp.insert_str)
+                    position = random.sample(range(len(bp.insertStr)), 1)[0]
+                    bp_lstr = list(bp.insertStr)
                     bp_lstr[position] = SNP(bp_lstr[position])
-                    bp.insert_str = ''.join(bp_lstr)
+                    bp.insertStr = ''.join(bp_lstr)
 
                 for i in range(number_noDEL):
 
@@ -251,7 +252,7 @@ class VariantNode(NodeMixin):
                                                isOverlap)
             else:
 
-                positions = random.sample(self.avail_position[chrom], number)
+                positions = self.avail_position.samplePosis(chrom, number)
 
                 if isHetero == "TRUE":
                     hapl_type = random.sample(ref[chrom].keys(), 1)[0]
@@ -287,7 +288,7 @@ class VariantNode(NodeMixin):
         for hapl_type in self.breakpoints.breaks_list[chrom].keys():
             for hapl_index in range(len(
                     self.breakpoints.breaks_list[chrom][hapl_type])):
-                strBps = filter(lambda item: item.insert_str is not None,
+                strBps = filter(lambda item: item.insertStr is not None,
                                 self.breakpoints.breaks_list
                                 [chrom][hapl_type][hapl_index])
                 if len(strBps) > 1:
@@ -298,7 +299,7 @@ class VariantNode(NodeMixin):
     def _getNDCPs(self, chrom):
         return filter(
             lambda item: item.sv_type == "CNV" and item.sv.genotype != "NONE",
-            self.SV_positions[chrom])
+            self.sv_positions.svp_dict[chrom])
 
     def _make_sv(self, ref):
         new_positions = self._generateNewPosition()
@@ -349,18 +350,18 @@ class VariantNode(NodeMixin):
 
                         hapl_type = sv[2]
                         hapl_idx = sv[3]
-                        ploidy_status = sv[4]
+                        # ploidy_status = sv[4]
 
-                        self.sv_positions.add_posi_INVERSION(
+                        self.sv_positions.add_posi_INVERTION(
                             chrom, hapl_type, hapl_idx, posi, length)
-                        current_sv_positions.add_posi_INVERSION(
+                        current_sv_positions.add_posi_INVERTION(
                             chrom, hapl_type, hapl_idx, posi, length)
 
                     if variant_name == "DELETION":
 
                         hapl_type = sv[2]
                         hapl_idx = sv[3]
-                        ploidy_status = sv[4]
+                        # ploidy_status = sv[4]
 
                         self.sv_positions.add_posi_DELETION(
                             chrom, hapl_type, hapl_idx, posi, length)
@@ -371,7 +372,7 @@ class VariantNode(NodeMixin):
 
                         hapl_type = sv[2]
                         hapl_idx = sv[3]
-                        ploidy_status = sv[4]
+                        # ploidy_status = sv[4]
 
                         self.sv_positions.add_posi_INSERTION(
                             chrom, hapl_type, hapl_idx, posi, length)
@@ -384,25 +385,15 @@ class VariantNode(NodeMixin):
                         chrom_to = sv[4]
                         hapl_type_to = sv[5]
                         hapl_idx_to = int(sv[6])
-                        ploidy_genotype = sv[7]
+                        # ploidy_genotype = sv[7]
 
-                        self.sv_positions.add_posi_TRANSVERSION(chrom_from,
-                                                                posi,
-                                                                hapl_type_from,
-                                                                hapl_idx_from,
-                                                                chrom_to,
-                                                                hapl_type_to,
-                                                                hapl_idx_to,
-                                                                length)
+                        self.sv_positions.add_posi_TRANSLOCATION(
+                            chrom, posi, hapl_type_from, hapl_idx_from,
+                            chrom_to, hapl_type_to, hapl_idx_to, length)
 
-                        current_sv_positions.add_posi_TRANSVERSION(chrom_from,
-                                                                posi,
-                                                                hapl_type_from,
-                                                                hapl_idx_from,
-                                                                chrom_to,
-                                                                hapl_type_to,
-                                                                hapl_idx_to,
-                                                                length)
+                        current_sv_positions.add_posi_TRANSLOCATION(
+                            chrom, posi, hapl_type_from, hapl_idx_from,
+                            chrom_to, hapl_type_to, hapl_idx_to, length)
                     break
                 else:
                     count = count+1

@@ -59,12 +59,12 @@ class SV_positions:
         temp_SVP.sv.copy_number = copy_number
         temp_SVP.sv.genotype = genotype
 
-        temp_SVP.sv.hapl_remain = self._getHaplRemain(genotype, ploidy_status)
+        temp_SVP.sv.hapl_remain = self._getHaplRemain(genotype, ploidy_status[chrom])
 
         self._add_svp(chrom, temp_SVP)
 
     def _getHaplRemain(self, genotype, ploidy_status):
-        if genotype is None:
+        if genotype == "NONE":
             return {}
 
         hr = {}

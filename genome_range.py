@@ -38,6 +38,9 @@ class GenomeRange(object):
     def sample1posi(self, chrom):
         return random.sample(self._genome_range[chrom], 1)[0]
 
+    def samplePosis(self, chrom, number):
+        return random.sample(self._genome_range[chrom], number)
+
     def isOverlaped(self, chrom, start, end):
         temp_range = np.arange(start, end)
         if np.array_equal(np.intersect1d(self._genome_range[chrom], temp_range),
