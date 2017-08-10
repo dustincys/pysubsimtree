@@ -38,19 +38,24 @@ def compute_range(ref):
 
 def outputFa(ref, outfileName):
     outfile = open(outfileName, 'w')
-    for key in ref:
-        k = 0
-        for line in ref[key]:
-            i = 0
-            k = k+1
-            str_len = len(line)
-            print str_len
-            outfile.write('>'+key+'_'+str(k)+'\n')
-            while i+50 <= str_len:
-                outfile.write(line[i:i+50]+'\n')
-                i = i+50
-            if i < str_len:
-                outfile.write(line[i:str_len]+'\n')
+
+    for chrom in ref.keys():
+        for hapl_type in ref[chrom].keys():
+            for hapl_idx in range(len(ref[chrom][hapl_type])):
+                strID = '>{0}_{1}_{2}\n'.format(chrom, hapl_type, hapl_idx)
+                outfile.write(strID)
+
+                strDNA = ref[chrom][hapl_type][hapl_idx]
+                strDNA_len = len(strDNA)
+                i = 0
+
+                while i+50 <= strDNA_len:
+                    outfile.write(strDNA[i:i+50]+'\n')
+                    i = i+50
+
+                if i < strDNA_len:
+                    outfile.write(strDNA[i:strDNA_len]+'\n')
+
     outfile.close()
 
 
@@ -171,10 +176,10 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
     for key in ref_dic:
         # 表示fasta 上是不是含有paternal 和maternal
         # 正常情况下hapl 是 [0]
-        #hapl = [k for k in range(len(ref_dic[key]))]
+        # hapl = [k for k in range(len(ref_dic[key]))]
         hapl = ref_dic[key].keys()
 
-        tmp_str_list = [ref_dic[key][hapl[0]][0],ref_dic[key][hapl[1]][0]]
+        tmp_str_list = [ref_dic[key][hapl[0]][0], ref_dic[key][hapl[1]][0]]
 
         str_list = []
         for tmp in tmp_str_list:

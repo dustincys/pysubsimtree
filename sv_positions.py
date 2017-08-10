@@ -30,6 +30,13 @@ class SVP(object):
 
         self.sv = None
 
+    def info_str_title(self):
+        return "# position\tsv_type\t{}\n".format(self.sv.info_str_title())
+
+    def info_str(self):
+        return "{0}\t{1}\t{2}\n".format(self.position, self.sv_type,
+                                        self.sv.info_str())
+
 
 class SV_positions:
 
@@ -59,7 +66,8 @@ class SV_positions:
         temp_SVP.sv.copy_number = copy_number
         temp_SVP.sv.genotype = genotype
 
-        temp_SVP.sv.hapl_remain = self._getHaplRemain(genotype, ploidy_status[chrom])
+        temp_SVP.sv.hapl_remain = self._getHaplRemain(
+            genotype, ploidy_status[chrom])
 
         self._add_svp(chrom, temp_SVP)
 

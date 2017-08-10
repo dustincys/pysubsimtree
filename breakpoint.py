@@ -238,7 +238,7 @@ class BreakPoints():
 
     def _bpsHasChromHap(self, chrom, hapl_type):
         return self._bpsHasChrom(chrom) and hapl_type in\
-            self.breaks_list[chrom][hapl_type]
+            self.breaks_list[chrom].keys()
 
     def _generateHapStr(self, chrom, hapl_type, hapl_idx, ref):
         hapStr = ""

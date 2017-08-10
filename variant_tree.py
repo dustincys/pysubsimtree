@@ -105,19 +105,13 @@ class VariantNode(NodeMixin):
         # [variant_length, variant_copy_number,
         # variant_genotype, variant_name])
         outfileName = outfilePrefix+self.name+".SV.txt"
-        outfileHead =\
-            "chrom\tpois\tlength\tcopy_number\tgenotype\tvariant_name\n"
 
         with open(outfileName, 'w') as outfile:
-            outfile.write(outfileHead)
             for chrom in self.sv_positions.svp_dict.keys():
                 sv_items = self.sv_positions.svp_dict[chrom]
                 for sv_item in sv_items:
-                    outfile.write(
-                        "{0}\t{1}\t{2}\t{3}\t{4}\t{5}\n".format(
-                            chrom, sv_item.position, sv_item.sv.length,
-                            sv_item.sv.copy_number, sv_item.sv.genotype,
-                            sv_item.sv_type))
+                    outfile.write(sv_item.info_str_title())
+                    outfile.write(sv_item.info_str())
         pass
 
     def make(self, ref):
@@ -617,7 +611,7 @@ class VariantTree(object):
                     ploidy_type_after = list_line[6]
                     variant = [chrom, ploidy_number_before,
                                ploidy_number_after, ploidy_type_before,
-                               ploidy_type_after]
+                               ploidy_type_after, variant_type]
 
                     self._add2node(
                         variant, 1, subclonal_name, variant_nodes)
@@ -639,13 +633,15 @@ class VariantTree(object):
 
     def _add2node(self, variant, number, subclonal_name, variant_nodes):
         if subclonal_name not in variant_nodes.keys():
-            temp_Node = VariantNode(subclonal_name)
+            temp_Node = VariantNode(subclonal_name,
+                                    variant_type=variant[-1])
             variant_nodes[subclonal_name] = temp_Node
         else:
             temp_Node = variant_nodes[subclonal_name]
 
         for i in range(number):
             temp_Node.variant_list = temp_Node.variant_list + [variant]
+
 
     def _linkNode(self, variant_nodes):
         if "1" not in variant_nodes.keys():

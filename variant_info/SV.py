@@ -23,6 +23,13 @@ class CNV:
         self.genotype = ""  # P0P1M0
         self.hapl_remain = None
 
+    def info_str_title(self):
+        return "length\tcopy_number\tgenotype\thapl_remain"
+
+    def info_str(self):
+        return "{0}\t{1}\t{2}\t{3}".format(
+            self.length, self.copy_number, self.genotype, self.hapl_remain)
+
 
 class INSERTION:
 
@@ -31,6 +38,13 @@ class INSERTION:
         self.length = -1
         self.hapl_type = ""
         self.hapl_idx = -1
+
+    def info_str_title(self):
+        return "length\thapl_type\thapl_idx"
+
+    def info_str(self):
+        return "{0}\t{1}\t{2}".format(
+            self.length, self.hapl_type, self.hapl_idx)
 
 
 class DELETION:
@@ -41,6 +55,13 @@ class DELETION:
         self.hapl_type = ""
         self.hapl_idx = -1
 
+    def info_str_title(self):
+        return "length\thapl_type\thapl_idx"
+
+    def info_str(self):
+        return "{0}\t{1}\t{2}".format(
+            self.length, self.hapl_type, self.hapl_idx)
+
 
 class INVERTION:
 
@@ -49,6 +70,13 @@ class INVERTION:
         self.length = -1
         self.hapl_type = ""
         self.hapl_idx = -1
+
+    def info_str_title(self):
+        return "length\thapl_type\thapl_idx"
+
+    def info_str(self):
+        return "{0}\t{1}\t{2}".format(
+            self.length, self.hapl_type, self.hapl_idx)
 
 
 class TRANSLOCATION:
@@ -60,3 +88,12 @@ class TRANSLOCATION:
         self.hapl_idx_from = -1
         self.hapl_idx_to = -1
         self.length = -1
+
+    def info_str_title(self):
+        return "chrom_to\thapl_type_from\thapl_type_to\
+            \thapl_idx_from\thapl_idx_to\tlength"
+
+    def info_str(self):
+        return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(
+            self.chrom_to, self.hapl_type_from, self.hapl_type_to,
+            self.hapl_idx_from, self.hapl_idx_to, self.length)
