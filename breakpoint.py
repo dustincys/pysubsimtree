@@ -65,22 +65,37 @@ class BreakPoints():
         # 此处为了进行ploidy操作，结构为 {chr1:{'P':[[bp1],[bp2]], 'M':[[bp3]]}}
         self.breaks_list = {}
 
-    def add_ploidy(self, chrom, hapl, hapl_ids):
-        hic = Counter(hapl_ids)
+    def add_ploidy(self, chrom, hapl_type, hapl_idxes):
+        hic = Counter(hapl_idxes)
         ploidies = []
         for hi in hic.keys():
-            hapl_idex = int(hi)
+            hapl_idx = int(hi)
             number = hic[hi]
-            ploidies = ploidies +\
-                number * [self.breaks_list[chrom][hapl][hapl_idex]]
+            if self._has(chrom, hapl_type, hapl_idx):
+                ploidies = ploidies +\
+                    number * [self.breaks_list[chrom][hapl_type][hapl_idx]]
 
-        self.breaks_list[chrom][hapl] = self.breaks_list[chrom][hapl] + ploidies
+        if self._has(chrom, hapl_type, hapl_idx):
+            self.breaks_list[chrom][hapl_type] = self.breaks_list[chrom][
+                hapl_type] + ploidies
+
+    def _has(self, chrom, hapl_type, hapl_idx):
+        if chrom in self.breaks_list.keys():
+            if hapl_type in self.breaks_list[chrom].keys():
+                if hapl_idx < len(self.breaks_list[chrom][hapl_type]):
+                    return True
+                else:
+                    return False
+            else:
+                return False
+        else:
+            return False
 
         # self.breakpoints.delete_ploidy(chrom, hapl, hapl_idxes)
     def delete_ploidy(self, chrom, hapl, hapl_idxes):
         self.breaks_list[chrom][hapl] = [
             self.breaks_list[chrom][hapl][i]
-            for i in range(self.breaks_list[chrom][hapl])
+            for i in range(len(self.breaks_list[chrom][hapl]))
             if i not in hapl_idxes]
 
     def generateBPs(self, variant_positions, avail_position, noDEL_position,

@@ -63,7 +63,7 @@ class SNV_positions:
     def delete_ploidy(self, chrom, hapl, hapl_idxes):
         self.snvp_dict[chrom][hapl] = [
             self.snvp_dict[chrom][hapl][i]
-            for i in range(self.snvp_dict[chrom][hapl])
+            for i in range(len(self.snvp_dict[chrom][hapl]))
             if i not in hapl_idxes]
 
     def addPosi(

@@ -212,9 +212,19 @@ class VariantNode(NodeMixin):
                 noDELCNVpois = self._getNDCPs(chrom)
                 strBps = self._getStrBps(chrom)
 
-                if strBps is not None:
+                if strBps is not None and len(noDELCNVpois) > 0:
                     number_noDEL = int(number / 2)
                     number_bp = number - number_noDEL
+                if len(noDELCNVpois) == 0:
+                    number_noDEL = 0
+                    number_bp = number
+                if strBps is None:
+                    number_bp = 0
+                    number_noDEL = number
+                if strBps is None and len(noDELCNVpois) == 0:
+                    number_bp = 0
+                    number_noDEL = 0
+
 
                 for i in range(number_bp):
                     bp = random.sample(strBps, 1)[0]
