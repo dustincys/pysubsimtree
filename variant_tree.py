@@ -161,7 +161,7 @@ class VariantNode(NodeMixin):
             ploidy_type_before = variant[3]
             ploidy_type_after = variant[4]
             ptc_before = Counter(ploidy_type_before)
-            ptc_after = Counter(ploidy_type_before)
+            ptc_after = Counter(ploidy_type_after)
 
             for hapl in ptc_before.keys():
                 if hapl in ptc_after.keys():
@@ -177,10 +177,10 @@ class VariantNode(NodeMixin):
 
                     elif ptc_before[hapl] < ptc_after[hapl]:
                         number = ptc_after[hapl]-ptc_before[hapl]
-                        hapls = ''.join(random.choice(range(ptc_before[hapl]))
-                                        for _ in range(number))
+                        hapls = [random.choice(range(ptc_before[hapl])) for _ in
+                                 range(number)]
                         self.breakpoints.add_ploidy(chrom, hapl, hapls)
-                        self.snv_positions.add_ploidy(chrom, hapl, hapl_idxes)
+                        self.snv_positions.add_ploidy(chrom, hapl, hapls)
 
                     else:
                         continue
@@ -203,10 +203,7 @@ class VariantNode(NodeMixin):
             chrom = snv[0]
             isHetero = snv[1]
             isOverlap = snv[2]
-            # ploidy_type = snv[3]
-            number = snv[4]
-            # variant_type = snv[5]
-            # psc = Counter(self.ploidy_status[chrom])
+            number = snv[3]
 
             if isOverlap == "TRUE":
                 # only hetero
@@ -350,6 +347,18 @@ class VariantNode(NodeMixin):
                             chrom, hapl_type, hapl_idx, posi, length)
                         current_sv_positions.add_posi_INVERTION(
                             chrom, hapl_type, hapl_idx, posi, length)
+
+                    if variant_name == "TANDEMDUP":
+
+                        hapl_type = sv[2]
+                        hapl_idx = sv[3]
+                        times = sv[4]
+                        # ploidy_status = sv[5]
+
+                        self.sv_positions.add_posi_TANDEMDUP(
+                            chrom, hapl_type, hapl_idx, posi, length, times)
+                        current_sv_positions.add_posi_TANDEMDUP(
+                            chrom, hapl_type, hapl_idx, posi, length, times)
 
                     if variant_name == "DELETION":
 
@@ -521,7 +530,25 @@ class VariantTree(object):
                         hapl_type = list_line[4]
                         hapl_idx = int(list_line[5])
                         variant_length = int(list_line[6])
-                        ploidy_status = list_line[7]
+                        number = int(list_line[7])
+
+                        variant = [
+                            chrom,
+                            variant_length,
+                            hapl_type,
+                            hapl_idx,
+                            variant_name,
+                            variant_type]
+
+                        self._add2node(
+                            variant, number, subclonal_name, variant_nodes)
+
+                    elif variant_name == "TANDEMDUP":
+                        chrom = list_line[3]
+                        hapl_type = list_line[4]
+                        hapl_idx = int(list_line[5])
+                        variant_length = int(list_line[6])
+                        times = int(list_line[7])
                         number = int(list_line[8])
 
                         variant = [
@@ -529,7 +556,7 @@ class VariantTree(object):
                             variant_length,
                             hapl_type,
                             hapl_idx,
-                            ploidy_status,
+                            times,
                             variant_name,
                             variant_type]
 
@@ -541,15 +568,13 @@ class VariantTree(object):
                         hapl_type = list_line[4]
                         hapl_idx = int(list_line[5])
                         variant_length = int(list_line[6])
-                        ploidy_status = list_line[7]
-                        number = int(list_line[8])
+                        number = int(list_line[7])
 
                         variant = [
                             chrom,
                             variant_length,
                             hapl_type,
                             hapl_idx,
-                            ploidy_status,
                             variant_name,
                             variant_type]
 
@@ -561,15 +586,13 @@ class VariantTree(object):
                         hapl_type = list_line[4]
                         hapl_idx = int(list_line[5])
                         variant_length = int(list_line[6])
-                        ploidy_status = list_line[7]
-                        number = int(list_line[8])
+                        number = int(list_line[7])
 
                         variant = [
                             chrom,
                             variant_length,
                             hapl_type,
                             hapl_idx,
-                            ploidy_status,
                             variant_name,
                             variant_type]
 
@@ -584,8 +607,7 @@ class VariantTree(object):
                         chrom_to = list_line[7]
                         hapl_type_to = list_line[8]
                         hapl_idx_to = int(list_line[9])
-                        ploidy_genotype = list_line[10]
-                        number = int(list_line[11])
+                        number = int(list_line[10])
 
                         variant = [
                             chrom_from,
@@ -595,7 +617,6 @@ class VariantTree(object):
                             chrom_to,
                             hapl_type_to,
                             hapl_idx_to,
-                            ploidy_genotype,
                             variant_name,
                             variant_type]
 
@@ -620,9 +641,8 @@ class VariantTree(object):
                     chrom = list_line[2]
                     isHetero = list_line[3]
                     isOverlap = list_line[4]
-                    ploidy_type = list_line[5]
                     number = int(list_line[6])
-                    variant = [chrom, isHetero, isOverlap, ploidy_type, number,
+                    variant = [chrom, isHetero, isOverlap, number,
                                variant_type]
                     self._add2node(
                         variant, 1, subclonal_name, variant_nodes)
@@ -641,7 +661,6 @@ class VariantTree(object):
 
         for i in range(number):
             temp_Node.variant_list = temp_Node.variant_list + [variant]
-
 
     def _linkNode(self, variant_nodes):
         if "1" not in variant_nodes.keys():

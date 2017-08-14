@@ -79,6 +79,23 @@ class INVERTION:
             self.length, self.hapl_type, self.hapl_idx)
 
 
+class TANDEMDUP:
+
+    def __init__(self):
+
+        self.length = -1
+        self.hapl_type = ""
+        self.hapl_idx = -1
+        self.times = 1
+
+    def info_str_title(self):
+        return "length\times\thapl_type\thapl_idx"
+
+    def info_str(self):
+        return "{0}\t{1}\t{2}\t{3}".format(
+            self.length, self.times, self.hapl_type, self.hapl_idx)
+
+
 class TRANSLOCATION:
 
     def __init__(self):

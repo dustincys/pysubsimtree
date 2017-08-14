@@ -39,20 +39,32 @@ class SNV_positions:
         hic = Counter(hapl_ids)
         ploidies = []
         for hi in hic.keys():
-            hapl_idex = int(hi)
+            hapl_idx = int(hi)
             number = hic[hi]
-            ploidies = ploidies +\
-                number * [self.snvp_dict[chrom][hapl][hapl_idex]]
+            if self._has(chrom, hapl, hapl_idx):
+                ploidies = ploidies +\
+                    number * [self.snvp_dict[chrom][hapl][hapl_idx]]
 
-        self.snvp_dict[chrom][hapl] = self.snvp_dict[chrom][hapl] + ploidies
+        if self._has(chrom, hapl, hapl_idx):
+            self.snvp_dict[chrom][hapl] = self.snvp_dict[chrom][hapl] + ploidies
 
-        # self.breakpoints.delete_ploidy(chrom, hapl, hapl_idxes)
+    def _has(self, chrom, hapl, hapl_idx):
+        if chrom in self.snvp_dict.keys():
+            if hapl in self.snvp_dict[chrom].keys():
+                if hapl_idx < len(self.snvp_dict[chrom][hapl]):
+                    return True
+                else:
+                    return False
+            else:
+                return False
+        else:
+            return False
+
     def delete_ploidy(self, chrom, hapl, hapl_idxes):
         self.snvp_dict[chrom][hapl] = [
             self.snvp_dict[chrom][hapl][i]
             for i in range(self.snvp_dict[chrom][hapl])
             if i not in hapl_idxes]
-
 
     def addPosi(
             self,

@@ -23,6 +23,7 @@ class Break:
     def __init__(self):
         self.chrom = ""
         self.hapl_type = -1
+        # it seems , no need
         self.hapl_idx = -1
         self.position = -1
         self.name = ""
@@ -114,6 +115,11 @@ class BreakPoints():
                                   ploidy_status,
                                   ref)
 
+            vp_TANDEMDUP = filter(
+                lambda item: item.sv_type == "TANDEMDUP",
+                variant_positions.svp_dict[chrom])
+            self._generateTandemdupBPs(chrom, vp_TANDEMDUP, ploidy_status, ref)
+
             vp_TRANSLOCATION = filter(
                 lambda item: item.sv_type == "TRANSLOCATION",
                 variant_positions.svp_dict[chrom])
@@ -171,6 +177,26 @@ class BreakPoints():
                               hapl_type, hapl_idx, bp_start)
             self._breakAppend(ploidy_status, chrom,
                               hapl_type, hapl_idx, bp_end)
+
+    def _generateTandemdupBPs(self, chrom, vps, ploidy_status, ref):
+        for vp in vps:
+            hapl_type = vp.sv.hapl_type
+            hapl_idx = vp.sv.hapl_idx
+            times = vp.sv.times
+
+            insertStr =\
+                times * ref[chrom][hapl_type][hapl_idx][
+                    vp.position: vp.position+vp.sv.length]
+
+            bp = Break()
+            bp.chrom = chrom
+            bp.hapl_type = hapl_type
+            bp.hapl_idx = hapl_idx
+            bp.position = vp.position+vp.sv.length
+            bp.name = "INSERTION"
+            bp.insertStr = insertStr
+
+            self._breakAppend(ploidy_status, chrom, hapl_type, hapl_idx, bp)
 
     def _generateDelsBPs(self, chrom, vps, ploidy_status):
         for vp in vps:
@@ -408,8 +434,6 @@ class BreakPoints():
                                           hapl_type, hapl_idx, bp_start)
                         self._breakAppend(ploidy_status, chrom,
                                           hapl_type, hapl_idx, bp_end)
-                        noDEL_position.takePosi(chrom, vp.position,
-                                                vp.position+vp.sv.length)
             else:
                 genoCounter = Counter(genotype)
                 # 只要出现与ploidy状态，减少的位置就要写入deletion

@@ -12,7 +12,8 @@
 #       History:
 # =============================================================================
 '''
-from variant_info.SV import CNV, INSERTION, DELETION, INVERTION, TRANSLOCATION
+from variant_info.SV import CNV, INSERTION, DELETION, INVERTION, TRANSLOCATION,\
+    TANDEMDUP
 from collections import Counter
 import random
 
@@ -124,6 +125,20 @@ class SV_positions:
         temp_SVP.sv.hapl_type = hapl_type
         temp_SVP.sv.hapl_idx = hapl_idx
         temp_SVP.sv.length = length
+
+        self._add_svp(chrom, temp_SVP)
+
+    def add_posi_TANDEMDUP(self, chrom, hapl_type, hapl_idx, position, length,
+                           times):
+        temp_SVP = SVP()
+        temp_SVP.sv_type = "TANDEMDUP"
+        temp_SVP.position = position
+
+        temp_SVP.sv = TANDEMDUP()
+        temp_SVP.sv.hapl_type = hapl_type
+        temp_SVP.sv.hapl_idx = hapl_idx
+        temp_SVP.sv.length = length
+        temp_SVP.sv.times = times
 
         self._add_svp(chrom, temp_SVP)
 
