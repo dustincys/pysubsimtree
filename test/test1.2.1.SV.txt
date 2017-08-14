@@ -1,0 +1,4 @@
+# position	sv_type	length	copy_number	genotype	hapl_remain
+152	CNV	2	3	PPM	{'P': [0], 'M': [0]}
+# position	sv_type	length	copy_number	genotype	hapl_remain
+33	CNV	2	2	MM	{'M': [0]}

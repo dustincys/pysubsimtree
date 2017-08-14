@@ -1,0 +1,2 @@
+# position	sv_type	length	copy_number	genotype	hapl_remain
+490	CNV	2	0	NONE	{}

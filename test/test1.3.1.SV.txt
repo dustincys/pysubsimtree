@@ -1,0 +1,28 @@
+# position	sv_type	length	copy_number	genotype	hapl_remain
+719	CNV	2	1	P	{'P': [0]}
+# position	sv_type	length	imes	hapl_type	hapl_idx
+682	TANDEMDUP	4	2	P	0
+# position	sv_type	length	copy_number	genotype	hapl_remain
+673	CNV	2	4	MMMM	{'M': [0]}
+# position	sv_type	length	hapl_type	hapl_idx
+576	INVERTION	4	P	0
+# position	sv_type	chrom_to	hapl_type_from	hapl_type_to            	hapl_idx_from	hapl_idx_to	length
+495	TRANSLOCATION	chr1	M	P	0	0	4
+# position	sv_type	length	hapl_type	hapl_idx
+423	INVERTION	4	P	0
+# position	sv_type	length	copy_number	genotype	hapl_remain
+416	CNV	2	0	NONE	{}
+# position	sv_type	length	hapl_type	hapl_idx
+341	DELETION	4	M	0
+# position	sv_type	chrom_to	hapl_type_from	hapl_type_to            	hapl_idx_from	hapl_idx_to	length
+312	TRANSLOCATION	chr1	M	P	0	0	4
+# position	sv_type	length	imes	hapl_type	hapl_idx
+164	TANDEMDUP	4	2	P	0
+# position	sv_type	length	hapl_type	hapl_idx
+162	INSERTION	4	P	0
+# position	sv_type	length	hapl_type	hapl_idx
+70	DELETION	4	M	0
+# position	sv_type	length	copy_number	genotype	hapl_remain
+35	CNV	2	2	PP	{'P': [0, 1]}
+# position	sv_type	length	hapl_type	hapl_idx
+10	INSERTION	4	P	0
