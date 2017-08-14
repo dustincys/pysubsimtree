@@ -124,7 +124,6 @@ def read_dbsnp(dbsnp, chome):
                             [newline[1], newline[3], newline[4]])
     else:
         chrome_list = chome.split(',')
-        print chrome_list
         for line in open(dbsnp):
             if not line.startswith('#'):
                 newline = line.rstrip().split('\t')
@@ -142,9 +141,6 @@ def read_dbsnp(dbsnp, chome):
                     else:
                         snp_dic[chromName].append(
                             [newline[1], newline[3], newline[4]])
-    for key in snp_dic.keys():
-        print "key = {}".format(key)
-        print "len(snp_dict[key]) = {}".format(len(snp_dic[key]))
     return snp_dic
 
 
@@ -162,16 +158,6 @@ def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
     # 平均分配每一个染色体上？
     num = int(num/len(ref_dic.keys()))
     i = 0
-    print "ref_dict keys():"
-    print ref_dic.keys()
-    for key in ref_dic.keys():
-        print "ref_dic key ={}".format(key)
-        print "ref len = {}".format(len(ref_dic[key]))
-        print "snp len = {}".format(len(snp_dic[key]))
-    print "snp_dict keys():"
-    print snp_dic.keys()
-
-    print "num = {}".format(num)
 
     for key in ref_dic:
         # 表示fasta 上是不是含有paternal 和maternal

@@ -114,6 +114,3 @@ Node labelled `1.1` is tumor subclone genome, Node `1` is  parent node of Node `
 	1.2.1	0.1
 	1.3	0.1
 	1.3.1	0.1
-
-
-

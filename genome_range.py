@@ -53,8 +53,9 @@ class GenomeRange(object):
         if not self.isOverlaped(chrom, start, end):
             print "Warning! remove not overlapping position!"
         temp_range = np.arange(start, end)
+        rm_index = np.where(np.in1d(self._genome_range[chrom], temp_range))[0]
         self._genome_range[chrom] = np.delete(self._genome_range[chrom],
-                                              temp_range)
+                                              rm_index)
 
     def addRange(self, chrom, start, end):
         pre_range = set(self._genome_range[chrom])

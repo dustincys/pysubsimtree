@@ -330,8 +330,8 @@ class BreakPoints():
             # 从候选位置中抽取插入位置，位置pois - 1
             pois = avail_position.sample1posi(chrom)
             print "pois sampled :{}".format(pois)
-            if avail_position.isOverlaped(chrom, pois-1, pois):
-                avail_position.takePosi(chrom, pois-1, pois)
+            if avail_position.isOverlaped(chrom, pois, pois+1):
+                avail_position.takePosi(chrom, pois, pois+1)
                 break
             else:
                 continue
@@ -341,11 +341,11 @@ class BreakPoints():
     def _getRandomInvalPosi(self, chrom, length, avail_position):
         pois = -1
         while True:
-            # 从候选位置中抽取插入位置，位置pois - 1
+            # 从候选位置中抽取插入位置，位置pois
             pois = avail_position.sample1posi(chrom)
             print "pois sampled :{}".format(pois)
-            if avail_position.isOverlaped(chrom, pois-1, pois+length):
-                avail_position.takePosi(chrom, pois-1, pois+length)
+            if avail_position.isOverlaped(chrom, pois, pois+length):
+                avail_position.takePosi(chrom, pois, pois+length)
                 break
             else:
                 continue

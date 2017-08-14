@@ -225,7 +225,6 @@ class VariantNode(NodeMixin):
                     number_bp = 0
                     number_noDEL = 0
 
-
                 for i in range(number_bp):
                     bp = random.sample(strBps, 1)[0]
                     position = random.sample(range(len(bp.insertStr)), 1)[0]
@@ -326,15 +325,19 @@ class VariantNode(NodeMixin):
                 posi = self.avail_position.sample1posi(chrom)
                 # 生成位置，以随机生成的第一个首字母为起始位置。
                 if variant_name == "INSERTION":
-                    end = posi + 1
+                    isOverlap = self.avail_position.isOverlaped(chrom, posi,
+                                                                posi + 1)
                 else:
-                    end = posi + length
+                    isOverlap = self.avail_position.isOverlaped(chrom, posi,
+                                                                posi + length)
 
-                isOverlap = self.avail_position.isOverlaped(chrom, posi, end)
                 if isOverlap:
                     # 此处需要在conf 中给定chrom, 因为不同的染色体的ploidy
                     # 不同，对应的变异的基因型也不同
-                    self.avail_position.takePosi(chrom, posi, end)
+                    if variant_name == "INSERTION":
+                        self.avail_position.takePosi(chrom, posi, posi + 1)
+                    else:
+                        self.avail_position.takePosi(chrom, posi, posi + length)
 
                     if variant_name == "CNV":
                         copy_number = sv[2]
