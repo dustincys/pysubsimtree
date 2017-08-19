@@ -11,7 +11,7 @@ CONFIG_PATH=./config
 #
 ##################  generate sv fasta  #########################################
 
-python $PYSUBSIMTREEPATH/pysubsimtree.py -c $CONFIG_PATH/ini.config
+python $PYSUBSIMTREEPATH/pysubsimtree.py -c $CONFIG_PATH/init.config
 
 #
 ##################  generate fastq  #########################################
