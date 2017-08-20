@@ -28,7 +28,7 @@ different cancer genomes, which can be mixed with specified proportions.
 
 A full demo is given in `./test`.
 In Pysubsim-tree, Node labelled `1` is normal genome.
-Node labelled `1.1` is tumor subclone genome, Node `1` is  parent node of Node `1.1` Node `1.1`. 
+Node labelled `1.1` is tumor subclone genome, Node `1` is  parent node of Node `1.1`. 
 
 
 `./test/config/init.conf` 	main configuration file
