@@ -110,8 +110,8 @@ class VariantNode(NodeMixin):
             for chrom in self.sv_positions.svp_dict.keys():
                 sv_items = self.sv_positions.svp_dict[chrom]
                 for sv_item in sv_items:
-                    outfile.write(sv_item.info_str_title())
-                    outfile.write(sv_item.info_str())
+                    outfile.write("chrom\t" + sv_item.info_str_title())
+                    outfile.write(chrom + "\t" + sv_item.info_str())
         pass
 
     def make(self, ref):
