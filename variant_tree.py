@@ -19,6 +19,7 @@ from snv_positions import SNV_positions
 from genome_range import GenomeRange
 
 from utils.utils import outputFa, SNP
+from utils.utils import constants
 
 from anytree import NodeMixin
 
@@ -309,6 +310,9 @@ class VariantNode(NodeMixin):
                                      self.ploidy_status)
 
     def _generateNewPosition(self):
+        clmin = constants.COMPLEXINDEL_LENGTH_MIN
+        clmax = constants.COMPLEXINDEL_LENGTH_MAX
+
         current_sv_positions = SV_positions()
 
         # str_len=[len(ref[tmp][0]) for tmp in dic]
@@ -383,6 +387,19 @@ class VariantNode(NodeMixin):
                             chrom, hapl_type, hapl_idx, posi, length)
                         current_sv_positions.add_posi_DELETION(
                             chrom, hapl_type, hapl_idx, posi, length)
+
+                    if variant_name == "COMPLEXINDEL":
+
+                        hapl_type = sv[2]
+                        hapl_idx = sv[3]
+                        # ploidy_status = sv[4]
+                        length1 = random.randint(clmin, clmax)
+                        length2 = random.randint(clmin, clmax)
+
+                        self.sv_positions.add_posi_COMPLEXINDEL(
+                            chrom, hapl_type, hapl_idx, posi, length1, length2)
+                        current_sv_positions.add_posi_COMPLEXINDEL(
+                            chrom, hapl_type, hapl_idx, posi, length1, length2)
 
                     if variant_name == "INSERTION":
 
@@ -604,6 +621,23 @@ class VariantTree(object):
                         variant = [
                             chrom,
                             variant_length,
+                            hapl_type,
+                            hapl_idx,
+                            variant_name,
+                            variant_type]
+
+                        self._add2node(
+                            variant, number, subclonal_name, variant_nodes)
+
+                    elif variant_name == "COMPLEXINDEL":
+                        chrom = list_line[3]
+                        hapl_type = list_line[4]
+                        hapl_idx = int(list_line[5])
+                        number = int(list_line[6])
+
+                        variant = [
+                            chrom,
+                            -1;
                             hapl_type,
                             hapl_idx,
                             variant_name,

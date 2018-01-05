@@ -63,6 +63,23 @@ class DELETION:
             self.length, self.hapl_type, self.hapl_idx)
 
 
+class COMPLEXINDEL:
+
+    def __init__(self):
+
+        self.length1 = -1
+        self.length2 = -1
+        self.hapl_type = ""
+        self.hapl_idx = -1
+
+    def info_str_title(self):
+        return "length\thapl_type\thapl_idx"
+
+    def info_str(self):
+        return "{0}\t{1}\t{2}".format(
+            self.length, self.hapl_type, self.hapl_idx)
+
+
 class INVERTION:
 
     def __init__(self):

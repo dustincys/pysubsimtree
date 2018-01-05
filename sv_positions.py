@@ -13,7 +13,7 @@
 # =============================================================================
 '''
 from variant_info.SV import CNV, INSERTION, DELETION, INVERTION, TRANSLOCATION,\
-    TANDEMDUP
+    TANDEMDUP, COMPLEXINDEL
 from collections import Counter
 import random
 
@@ -113,6 +113,19 @@ class SV_positions:
         temp_SVP.sv.hapl_type = hapl_type
         temp_SVP.sv.hapl_idx = hapl_idx
         temp_SVP.sv.length = length
+
+        self._add_svp(chrom, temp_SVP)
+
+    def add_posi_COMPLEXINDEL(self, chrom, hapl_type, hapl_idx, position, length1, length2):
+        temp_SVP = SVP()
+        temp_SVP.sv_type = "COMPLEXINDEL"
+        temp_SVP.position = position
+
+        temp_SVP.sv = COMPLEXINDEL()
+        temp_SVP.sv.hapl_type = hapl_type
+        temp_SVP.sv.hapl_idx = hapl_idx
+        temp_SVP.sv.length1 = length1
+        temp_SVP.sv.length2 = length2
 
         self._add_svp(chrom, temp_SVP)
 

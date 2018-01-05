@@ -123,6 +123,12 @@ class BreakPoints():
                 variant_positions.svp_dict[chrom])
             self._generateDelsBPs(chrom, vp_DELETION, ploidy_status)
 
+            # COMPLEXINDEL
+            vp_COMPLEXINDEL = filter(
+                lambda item: item.sv_type == "COMPLEXINDEL",
+                variant_positions.svp_dict[chrom])
+            self._generateComplexindelsBPs(chrom, vp_COMPLEXINDEL, ploidy_status)
+
             vp_INVERTION = filter(
                 lambda item: item.sv_type == "INVERTION",
                 variant_positions.svp_dict[chrom])
@@ -228,6 +234,30 @@ class BreakPoints():
                                     chrom, hapl_type, hapl_idx,
                                     vp.position+vp.sv.length,
                                     vp.position)
+
+            self._breakAppend(ploidy_status, chrom,
+                              hapl_type, hapl_idx, bp_start)
+            self._breakAppend(ploidy_status, chrom,
+                              hapl_type, hapl_idx, bp_end)
+
+    def _generateComplexindelsBPs(self, chrom, vps, ploidy_status):
+        for vp in vps:
+            # self.length = -1
+            # self.hapl_type = ""
+            # self.hapl_idx = -1
+            hapl_type = vp.sv.hapl_type
+            hapl_idx = vp.sv.hapl_idx
+            insertStr = rand_DNA(vp.sv.length2)
+
+            bp_start = self._pairedBP(
+                "COMPLEXINDEL",
+                chrom, hapl_type, hapl_idx,
+                vp.position,
+                vp.position+vp.sv.length1, insertStr)
+            bp_end = self._pairedBP("COMPLEXINDEL",
+                                    chrom, hapl_type, hapl_idx,
+                                    vp.position+vp.sv.length1,
+                                    vp.position, insertStr)
 
             self._breakAppend(ploidy_status, chrom,
                               hapl_type, hapl_idx, bp_start)
