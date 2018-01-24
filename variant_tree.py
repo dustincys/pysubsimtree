@@ -19,7 +19,7 @@ from snv_positions import SNV_positions
 from genome_range import GenomeRange
 
 from utils.utils import outputFa, SNP
-from utils.utils import constants
+from utils import constants
 
 from anytree import NodeMixin
 
@@ -637,7 +637,7 @@ class VariantTree(object):
 
                         variant = [
                             chrom,
-                            -1;
+                            -1,
                             hapl_type,
                             hapl_idx,
                             variant_name,
