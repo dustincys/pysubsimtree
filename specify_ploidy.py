@@ -12,55 +12,54 @@ def read_config(config_filename):
         else:
             continue
     return dic
-def ploidy(ref_dic,dic):
-    tmp_dic=[]
-    ref_dic_new={}
+def ploidy(refDic,dic):
+    refDicNew={}
     for key in dic:
         for n in range(dic[key]):
-            ref_dic_new[key+'-hap-'+str(n+1)]=ref_dic[key]
-    return ref_dic_new
+            refDicNew[key+'-hap-'+str(n+1)]=refDic[key]
+    return refDicNew
 def read_fasta(filename):
-    ref_dic={}
-    chr_name=''
+    refDic={}
+    chrName=''
     for line in open(filename):
         newline=line.rstrip()
         if newline.startswith('>'):
-            if chr_name!='':
-                if not chr_name.startswith('chr'):
-                    chr_name='chr'+chr_name
-                ref_dic[chr_name]=tmp_str
-            chr_name=newline.split('>')[1]
-            if not chr_name.startswith('chr'):
-                chr_name='chr'+chr_name
-            tmp_str=''
+            if chrName!='':
+                if not chrName.startswith('chr'):
+                    chrName='chr'+chrName
+                refDic[chrName]=tmpStr
+            chrName=newline.split('>')[1]
+            if not chrName.startswith('chr'):
+                chrName='chr'+chrName
+            tmpStr=''
         else:
-            tmp_str=tmp_str+newline.upper()
-    ref_dic[chr_name]=tmp_str
-    return ref_dic
+            tmpStr=tmpStr+newline.upper()
+    refDic[chrName]=tmpStr
+    return refDic
 def output(ref,outfilename):
     outfile=open(outfilename,'w')
-    tmp_key=sorted(ref.keys())
-    for key in tmp_key:
+    tmpKey=sorted(ref.keys())
+    for key in tmpKey:
         i=0
-        str_len=len(ref[key])
+        strLen=len(ref[key])
         outfile.write('>'+key+'\n')
-        while i+50<=str_len:
+        while i+50<=strLen:
             outfile.write(ref[key][i:i+50]+'\n')
             i=i+50
     outfile.close()
 def main():
-    usage = """%prog -i <file> -c <config file>  -o <out_fasta> 
+    usage = """%prog -i <file> -c <config file>  -o <out_fasta>
 
 specify_ploidy
-Author: Yuchao Xia	
+Author: Yuchao Xia
 Description: specify the number of ploidy for different chromesome
 	"""
-        
+
     parser = OptionParser(usage)
     parser.add_option("-i", "--inFile", dest="inFile", help="A reference fasta file.",metavar="FILE")
     parser.add_option("-c","--config",dest='config',help='the number of ploidy of different chromesome',metavar='FILE')
     parser.add_option('-o','--output',dest='output',help='output fasta file',metavar="file")
-   
+
     (opts, args) = parser.parse_args()
     if opts.inFile is None or opts.config is None:
         parser.print_help()
@@ -70,9 +69,9 @@ Description: specify the number of ploidy for different chromesome
         else:
             outfilename=opts.output
         config_dic=read_config(opts.config)
-        ref_dic=read_fasta(opts.inFile)
-        ref_dic=ploidy(ref_dic,config_dic)
-        output(ref_dic,outfilename)
+        refDic=read_fasta(opts.inFile)
+        refDic=ploidy(refDic,config_dic)
+        output(refDic,outfilename)
 if __name__ == "__main__":
     print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())
     start = time.clock()
@@ -81,4 +80,4 @@ if __name__ == "__main__":
     end = time.clock()
     print('simulation ends at:'+str(end))
     print("The function run time is : %.03f seconds" %(end-start))
-    print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime()) 
+    print time.strftime("%Y-%m-%d %H:%M:%S", time.localtime())

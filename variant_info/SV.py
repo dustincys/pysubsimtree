@@ -19,16 +19,16 @@ class CNV:
     def __init__(self):
 
         self.length = -1
-        self.copy_number = -1
+        self.copyNumber = -1
         self.genotype = ""  # P0P1M0
-        self.hapl_remain = None
+        self.haplRemain = None
 
     def info_str_title(self):
         return "length\tcopy_number\tgenotype\thapl_remain"
 
     def info_str(self):
         return "{0}\t{1}\t{2}\t{3}".format(
-            self.length, self.copy_number, self.genotype, self.hapl_remain)
+            self.length, self.copyNumber, self.genotype, self.haplRemain)
 
 
 class INSERTION:
@@ -36,15 +36,15 @@ class INSERTION:
     def __init__(self):
 
         self.length = -1
-        self.hapl_type = ""
-        self.hapl_idx = -1
+        self.haplType = ""
+        self.haplIdx = -1
 
     def info_str_title(self):
         return "length\thapl_type\thapl_idx"
 
     def info_str(self):
         return "{0}\t{1}\t{2}".format(
-            self.length, self.hapl_type, self.hapl_idx)
+            self.length, self.haplType, self.haplIdx)
 
 
 class DELETION:
@@ -52,15 +52,15 @@ class DELETION:
     def __init__(self):
 
         self.length = -1
-        self.hapl_type = ""
-        self.hapl_idx = -1
+        self.haplType = ""
+        self.haplIdx = -1
 
     def info_str_title(self):
         return "length\thapl_type\thapl_idx"
 
     def info_str(self):
         return "{0}\t{1}\t{2}".format(
-            self.length, self.hapl_type, self.hapl_idx)
+            self.length, self.haplType, self.haplIdx)
 
 
 class COMPLEXINDEL:
@@ -69,15 +69,15 @@ class COMPLEXINDEL:
 
         self.length1 = -1
         self.length2 = -1
-        self.hapl_type = ""
-        self.hapl_idx = -1
+        self.haplType = ""
+        self.haplIdx = -1
 
     def info_str_title(self):
         return "length\thapl_type\thapl_idx"
 
     def info_str(self):
         return "{0}\t{1}\t{2}".format(
-            self.length, self.hapl_type, self.hapl_idx)
+            self.length, self.haplType, self.haplIdx)
 
 
 class INVERTION:
@@ -85,15 +85,15 @@ class INVERTION:
     def __init__(self):
 
         self.length = -1
-        self.hapl_type = ""
-        self.hapl_idx = -1
+        self.haplType = ""
+        self.haplIdx = -1
 
     def info_str_title(self):
         return "length\thapl_type\thapl_idx"
 
     def info_str(self):
         return "{0}\t{1}\t{2}".format(
-            self.length, self.hapl_type, self.hapl_idx)
+            self.length, self.haplType, self.haplIdx)
 
 
 class TANDEMDUP:
@@ -101,8 +101,8 @@ class TANDEMDUP:
     def __init__(self):
 
         self.length = -1
-        self.hapl_type = ""
-        self.hapl_idx = -1
+        self.haplType = ""
+        self.haplIdx = -1
         self.times = 1
 
     def info_str_title(self):
@@ -110,24 +110,24 @@ class TANDEMDUP:
 
     def info_str(self):
         return "{0}\t{1}\t{2}\t{3}".format(
-            self.length, self.times, self.hapl_type, self.hapl_idx)
+            self.length, self.times, self.haplType, self.haplIdx)
 
 
 class TRANSLOCATION:
 
     def __init__(self):
-        self.chrom_to = ""
-        self.hapl_type_from = ""
-        self.hapl_type_to = ""
-        self.hapl_idx_from = -1
-        self.hapl_idx_to = -1
+        self.chromTo = ""
+        self.haplTypeFrom = ""
+        self.haplTypeTo = ""
+        self.haplIdxFrom = -1
+        self.haplIdxTo = -1
         self.length = -1
 
     def info_str_title(self):
-        return "chrom_to\thapl_type_from\thapl_type_to\
+        return "chromTo\thapl_type_from\thapl_type_to\
             \thapl_idx_from\thapl_idx_to\tlength"
 
     def info_str(self):
         return "{0}\t{1}\t{2}\t{3}\t{4}\t{5}".format(
-            self.chrom_to, self.hapl_type_from, self.hapl_type_to,
-            self.hapl_idx_from, self.hapl_idx_to, self.length)
+            self.chromTo, self.haplTypeFrom, self.haplTypeTo,
+            self.haplIdxFrom, self.haplIdxTo, self.length)

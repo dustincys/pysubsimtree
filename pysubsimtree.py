@@ -29,7 +29,7 @@ def main():
     if opts.config is None:
         parser.print_help()
     else:
-        out_prex = opts.prefix
+        outPrex = opts.prefix
 
         cf = ConfigParser.ConfigParser()
         cf.read(opts.config)
@@ -56,15 +56,15 @@ def main():
         # 生成germline ref
         ref_germline_new = ref_germline
         # 输出germline fasta文件
-        # outputFa(ref_germline_new, out_prex+'germline.fa')
+        # outputFa(ref_germline_new, outPrex+'germline.fa')
 
         vt = VariantTree(SV_config_file)
         vt.makeSV(ref_germline_new)
 
         for popu in pf_dict.keys():
             vt.variant_tree[popu].outputRef(
-                ref_germline_new, out_prex)
-            vt.variant_tree[popu].outputVartPosi(out_prex)
+                ref_germline_new, outPrex)
+            vt.variant_tree[popu].outputVartPosi(outPrex)
 
 
 if __name__ == "__main__":

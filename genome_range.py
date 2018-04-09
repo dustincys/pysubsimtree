@@ -25,26 +25,26 @@ class GenomeRange(object):
 
     def __init__(self):
         """initialized by ref"""
-        self._genome_range = {}
+        self._genomeRange = {}
 
     def init_none(self, ref):
         for chrom in ref.keys():
-            self._genome_range[chrom] = np.arange(0, 0)
+            self._genomeRange[chrom] = np.arange(0, 0)
 
     def init_from_ref(self, ref):
         # {'chr1':[], 'chr2':[] }
-        self._genome_range = compute_range(ref)
+        self._genomeRange = compute_range(ref)
 
     def sample1posi(self, chrom):
-        return random.sample(self._genome_range[chrom], 1)[0]
+        return random.sample(self._genomeRange[chrom], 1)[0]
 
     def samplePosis(self, chrom, number):
-        return random.sample(self._genome_range[chrom], number)
+        return random.sample(self._genomeRange[chrom], number)
 
     def isOverlaped(self, chrom, start, end):
-        temp_range = np.arange(start, end)
-        if np.array_equal(np.intersect1d(self._genome_range[chrom], temp_range),
-                          temp_range):
+        tempRange = np.arange(start, end)
+        if np.array_equal(np.intersect1d(self._genomeRange[chrom], tempRange),
+                          tempRange):
             return True
         else:
             return False
@@ -52,12 +52,12 @@ class GenomeRange(object):
     def takePosi(self, chrom, start, end):
         if not self.isOverlaped(chrom, start, end):
             print "Warning! remove not overlapping position!"
-        temp_range = np.arange(start, end)
-        rm_index = np.where(np.in1d(self._genome_range[chrom], temp_range))[0]
-        self._genome_range[chrom] = np.delete(self._genome_range[chrom],
-                                              rm_index)
+        tempRange = np.arange(start, end)
+        rmIndex = np.where(np.in1d(self._genomeRange[chrom], tempRange))[0]
+        self._genomeRange[chrom] = np.delete(self._genomeRange[chrom],
+                                              rmIndex)
 
     def addRange(self, chrom, start, end):
-        pre_range = set(self._genome_range[chrom])
-        add_range = set(np.arange(start, end))
-        self._genome_range[chrom] = np.array(list(pre_range | add_range))
+        preRange = set(self._genomeRange[chrom])
+        addRange = set(np.arange(start, end))
+        self._genomeRange[chrom] = np.array(list(preRange | addRange))

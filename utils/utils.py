@@ -18,94 +18,94 @@ import random
 
 
 def compute_range(ref):
-    ref_range = {}
+    refRange = {}
     for chrom in ref:
-        avai_range = np.arange(0, len(ref[chrom]['P'][0]))
-        n_base_indexes = re.finditer("[N]+", ref[chrom]['P'][0])
-        for item in n_base_indexes:
+        avaiRange = np.arange(0, len(ref[chrom]['P'][0]))
+        nBaseIndexes = re.finditer("[N]+", ref[chrom]['P'][0])
+        for item in nBaseIndexes:
             start = item.start(0)
             end = item.end(0)
             if not start - 20 <= 0:
                 start = start - 20
             if not end + 20 >= len(ref[chrom]['P'][0]):
                 end = end + 20
-            item_range = np.arange(start, end)
-            avai_range = np.delete(avai_range, item_range)
+            itemRange = np.arange(start, end)
+            avaiRange = np.delete(avaiRange, itemRange)
 
-        ref_range[chrom] = avai_range
-    return ref_range
+        refRange[chrom] = avaiRange
+    return refRange
 
 
 def outputFa(ref, outfileName):
     outfile = open(outfileName, 'w')
 
     for chrom in ref.keys():
-        for hapl_type in ref[chrom].keys():
-            for hapl_idx in range(len(ref[chrom][hapl_type])):
-                strID = '>{0}_{1}_{2}\n'.format(chrom, hapl_type, hapl_idx)
+        for haplType in ref[chrom].keys():
+            for haplIdx in range(len(ref[chrom][haplType])):
+                strID = '>{0}_{1}_{2}\n'.format(chrom, haplType, haplIdx)
                 outfile.write(strID)
 
-                strDNA = ref[chrom][hapl_type][hapl_idx]
-                strDNA_len = len(strDNA)
+                strDNA = ref[chrom][haplType][haplIdx]
+                strDNALen = len(strDNA)
                 i = 0
 
-                while i+50 <= strDNA_len:
+                while i+50 <= strDNALen:
                     outfile.write(strDNA[i:i+50]+'\n')
                     i = i+50
 
-                if i < strDNA_len:
-                    outfile.write(strDNA[i:strDNA_len]+'\n')
+                if i < strDNALen:
+                    outfile.write(strDNA[i:strDNALen]+'\n')
 
     outfile.close()
 
 
 def read_pf_config(pf_file_name):
-    pf_dict = {}
+    pfDict = {}
     with open(pf_file_name) as infile:
         for line in infile:
             line = line.strip()
             if line == "" or line.startswith("#"):
                 continue
             listLine = line.split("\t")
-            pf_dict[listLine[0]] = float(listLine[1])
+            pfDict[listLine[0]] = float(listLine[1])
 
-    return pf_dict
+    return pfDict
 
 
 def reference(ref_name):
-    ref_dic = {}
-    chr_name = ''
-    tmp_str = ''
+    refDic = {}
+    chrName = ''
+    tmpStr = ''
 
     for line in open(ref_name):
         newline = line.strip()
 
         if newline.startswith('>'):
             if '-' in newline:
-                chr_split = newline.split('-')
+                chrSplit = newline.split('-')
             else:
-                chr_split = [newline]
+                chrSplit = [newline]
 
-            if chr_name != '':
-                if chr_name not in ref_dic:
-                    ref_dic[chr_name] = {"P": [tmp_str]}
+            if chrName != '':
+                if chrName not in refDic:
+                    refDic[chrName] = {"P": [tmpStr]}
                 else:
-                    ref_dic[chr_name]["M"] = [tmp_str]
+                    refDic[chrName]["M"] = [tmpStr]
 
-            chr_name = chr_split[0].split('>')[1]
-            tmp_str = ''
+            chrName = chrSplit[0].split('>')[1]
+            tmpStr = ''
         else:
-            tmp_str = tmp_str+newline
+            tmpStr = tmpStr+newline
 
-    if chr_name not in ref_dic:
-        ref_dic[chr_name] = {"P": [tmp_str]}
+    if chrName not in refDic:
+        refDic[chrName] = {"P": [tmpStr]}
     else:
-        ref_dic[chr_name]["M"] = [tmp_str]
-    return ref_dic
+        refDic[chrName]["M"] = [tmpStr]
+    return refDic
 
 
 def read_dbsnp(dbsnp, chome):
-    snp_dic = {}
+    snpDic = {}
     if chome == 'ALL':
         for line in open(dbsnp):
             if not line.startswith('#'):
@@ -116,14 +116,14 @@ def read_dbsnp(dbsnp, chome):
                     chromName = newline[0]
 
                 if len(newline[4]) == 1 and len(newline[3]) == 1:
-                    if chromName not in snp_dic:
-                        snp_dic[chromName] = [
+                    if chromName not in snpDic:
+                        snpDic[chromName] = [
                             [newline[1], newline[3], newline[4]]]
                     else:
-                        snp_dic[chromName].append(
+                        snpDic[chromName].append(
                             [newline[1], newline[3], newline[4]])
     else:
-        chrome_list = chome.split(',')
+        chromeList = chome.split(',')
         for line in open(dbsnp):
             if not line.startswith('#'):
                 newline = line.rstrip().split('\t')
@@ -134,95 +134,94 @@ def read_dbsnp(dbsnp, chome):
 
                 if len(
                         newline[4]) == 1 and len(
-                        newline[3]) == 1 and chromName in chrome_list:
-                    if chromName not in snp_dic:
-                        snp_dic[chromName] = [
+                        newline[3]) == 1 and chromName in chromeList:
+                    if chromName not in snpDic:
+                        snpDic[chromName] = [
                             [newline[1], newline[3], newline[4]]]
                     else:
-                        snp_dic[chromName].append(
+                        snpDic[chromName].append(
                             [newline[1], newline[3], newline[4]])
-    return snp_dic
+    return snpDic
 
 
-def generate_normal(ref_dic, snp_dic, num, outfilename, hyp_rate=0.5):
+def generate_normal(refDic, snpDic, num, outfilename, hyp_rate=0.5):
     # 这个函数没有生成fasta文件
     outfile = open(outfilename, 'w')
     outfile.write('#chr\tpois\tref\talt\thap\n')
-    snp_list = {}
+    snpList = {}
     # hapl=[0,1]
     l1 = [1 for i in range(int(num*hyp_rate))]
     l2 = [0 for i in range(num-int(num*hyp_rate))]
-    total_list = l1+l2
-    random.shuffle(total_list)
-    ref_list = []
+    totalList = l1+l2
+    random.shuffle(totalList)
     # 平均分配每一个染色体上？
-    num = int(num/len(ref_dic.keys()))
+    num = int(num/len(refDic.keys()))
     i = 0
 
-    for key in ref_dic:
+    for key in refDic:
         # 表示fasta 上是不是含有paternal 和maternal
         # 正常情况下hapl 是 [0]
-        # hapl = [k for k in range(len(ref_dic[key]))]
-        hapl = ref_dic[key].keys()
+        # hapl = [k for k in range(len(refDic[key]))]
+        hapl = refDic[key].keys()
 
-        tmp_str_list = [ref_dic[key][hapl[0]][0], ref_dic[key][hapl[1]][0]]
+        tmpStrList = [refDic[key][hapl[0]][0], refDic[key][hapl[1]][0]]
 
-        str_list = []
-        for tmp in tmp_str_list:
-            str_list.append(list(tmp))
-        if len(snp_dic[key]) >= num:
-            random_list = random.sample(snp_dic[key], num)
-            for line in random_list:
-                if total_list[i] == 0:
+        strList = []
+        for tmp in tmpStrList:
+            strList.append(list(tmp))
+        if len(snpDic[key]) >= num:
+            randomList = random.sample(snpDic[key], num)
+            for line in randomList:
+                if totalList[i] == 0:
                     # 随机获取一个位置
                     hap = random.sample(range(len(hapl)), 1)[0]
                     # hap表示parternal or maternal ??
-                    old = str_list[hap][int(line[0])-1]
-                    str_list[hap][int(line[0])-1] = line[-1]
+                    old = strList[hap][int(line[0])-1]
+                    strList[hap][int(line[0])-1] = line[-1]
                     outfile.write(
                         key + '\t' + line[0] + '\t' + old + '\t' + line[-1] + '\t' +
                         str(hap + 1) + '\n')
                 else:
                     for t in range(len(hapl)):
-                        old = str_list[t][int(line[0])-1]
-                        str_list[t][int(line[0])-1] = line[-1]
+                        old = strList[t][int(line[0])-1]
+                        strList[t][int(line[0])-1] = line[-1]
                     outfile.write(
                         key + '\t' + line[0] + '\t' + old + '\t' + line[-1] +
                         '\thomozygous\n')
                 i = i+1
-                if key not in snp_list:
-                    snp_list[key] = [int(line[0])]
+                if key not in snpList:
+                    snpList[key] = [int(line[0])]
                 else:
-                    snp_list[key].append(int(line[0]))
+                    snpList[key].append(int(line[0]))
         else:
-            for line in snp_dic[key]:
-                if total_list[i] == 0:
+            for line in snpDic[key]:
+                if totalList[i] == 0:
                     hap = random.sample(range(len(hapl)), 1)[0]
-                    old = str_list[hap][int(line[0])-1]
-                    str_list[hap][int(line[0])-1] = line[-1]
+                    old = strList[hap][int(line[0])-1]
+                    strList[hap][int(line[0])-1] = line[-1]
                     outfile.write(
                         key + '\t' + line[0] + '\t' + old + '\t' + line[-1] + '\t' +
                         str(hap + 1) + '\n')
                 else:
                     for t in range(len(hapl)):
-                        old = str_list[t][int(line[0])-1]
-                        str_list[t][int(line[0])-1] = line[-1]
+                        old = strList[t][int(line[0])-1]
+                        strList[t][int(line[0])-1] = line[-1]
                     outfile.write(
                         key + '\t' + line[0] + '\t' + old + '\t' + line[-1] +
                         '\thomozygous\n')
                 i = i+1
-                if key not in snp_list:
-                    snp_list[key] = [int(line[0])]
+                if key not in snpList:
+                    snpList[key] = [int(line[0])]
                 else:
-                    snp_list[key].append(int(line[0]))
-        tmp_str = []
-        for i in range(len(str_list)):
-            tmp_str = ''.join(str_list[i])
-            # 将加入snp之后的放入ref_dic中，现在ref中的内容是另一条更改之后的，
+                    snpList[key].append(int(line[0]))
+        tmpStr = []
+        for i in range(len(strList)):
+            tmpStr = ''.join(strList[i])
+            # 将加入snp之后的放入refDic中，现在ref中的内容是另一条更改之后的，
             # 所以这里就没有paternal和maternal 之分了。
-            ref_dic[key][hapl[i]] = [tmp_str]
+            refDic[key][hapl[i]] = [tmpStr]
     outfile.close()
-    return [ref_dic, snp_list]
+    return [refDic, snpList]
 
 
 def rand_DNA(length=10):

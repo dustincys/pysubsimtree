@@ -18,4 +18,4 @@ class SNV:
     def __init__(self):
 
         self.position = -1
-        self.snv_type = "" # heterozygous or homozygous
+        self.snvType = "" # heterozygous or homozygous

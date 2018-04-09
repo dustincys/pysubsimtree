@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 '''
 # =============================================================================
-#      FileName: variant_tree.py
+#      FileName: genomeNodes.py
 #          Desc: 根据配置文件，生成变异树，根据要求可以遍历树的每一个节点
 #        Author: Chu Yanshuo
 #         Email: chu@yanshuo.name
@@ -14,8 +14,8 @@
 '''
 
 from breakpoint import BreakPoints
-from sv_positions import SV_positions
-from snv_positions import SNV_positions
+from sv_positions import SVPositions
+from snv_positions import SNVPositions
 from genome_range import GenomeRange
 
 from utils.utils import outputFa, SNP
@@ -28,91 +28,90 @@ from collections import Counter
 import random
 
 
-variantNodeType = ["SV", "SNV", "PLOIDY"]
+genomeNodeType = ["SV", "SNV", "PLOIDY"]
 
 
-class VariantNode(NodeMixin):
-    def __init__(self, name, parent=None, variant_type="SV"):
-        assert variant_type in variantNodeType
+class GenomeNode(NodeMixin):
+    def __init__(self, name, parent=None, variantType="SV"):
+        assert variantType in genomeNodeType
 
         self.name = name
         self.parent = parent
         # 用来传递生成ＳＮＶ
 
-        self.variant_type = variant_type
+        self.variantType = variantType
 
-        self.variant_list = []
+        self.variantL = []
 
         # generate ploidy reference
-        self.ploidy_status = {}
+        self.ploidyStatus = {}
 
-        self.snv_positions = None
-
-        self.sv_positions = None
+        self.snvPositions = None
+        self.svPositions = None
         self.breakpoints = None
-        self.avail_position = None
+        self.availPosition = None
 
         # record the none del sv position
-        self.noDEL_position = None
+        self.noDELPosition = None
 
     def outputRef(self, ref, outfilePrefix):
-        ref_ploidy = self._ref_make_ploidy(copy.deepcopy(ref))
-        ref_ploidy_snv = self._ref_make_snv(ref_ploidy)
-        variant_ref = self.breakpoints.generateFa(ref_ploidy_snv)
-        outputFa(variant_ref, outfilePrefix+self.name+".fa")
+        refPloidy = self._ref_make_ploidy(copy.deepcopy(ref))
+        refPloidySNV = self._ref_make_snv(refPloidy)
+        variantRef = self.breakpoints.generateFa(refPloidySNV)
+        outputFa(variantRef, outfilePrefix+self.name+".fa")
 
     def _ref_make_ploidy(self, ref):
-        ref_ploidy = {}
-        for chrom in self.ploidy_status.keys():
-            if chrom not in ref_ploidy.keys():
-                ref_ploidy[chrom] = {}
+        refPloidy = {}
+        for chrom in self.ploidyStatus.keys():
+            if chrom not in refPloidy.keys():
+                refPloidy[chrom] = {}
 
-            psc = Counter(self.ploidy_status[chrom])
-            for hapl_type in psc.keys():
-                if hapl_type not in ref_ploidy[chrom].keys():
-                    ref_ploidy[chrom][hapl_type] = []
+            psc = Counter(self.ploidyStatus[chrom])
+            for haplType in psc.keys():
+                if haplType not in refPloidy[chrom].keys():
+                    refPloidy[chrom][haplType] = []
 
-                for i in range(psc[hapl_type]):
-                    ref_ploidy[chrom][hapl_type].append(
-                        ref[chrom][hapl_type][0])
+                for i in range(psc[haplType]):
+                    refPloidy[chrom][haplType].append(
+                        ref[chrom][haplType][0])
 
-        return ref_ploidy
+        return refPloidy
 
-    def _ref_make_snv(self, ref_ploidy):
+    def _ref_make_snv(self, refPloidy):
         # 与breakpoint结构一致
-        for chrom in self.snv_positions.snvp_dict.keys():
-            for hapl_type in self.snv_positions.snvp_dict[chrom].keys():
-                for hapl_idx in \
-                        range(len(self.snv_positions.snvp_dict
-                                  [chrom][hapl_type])):
-                    lstr = list(ref_ploidy[chrom][hapl_type][hapl_idx])
+        for chrom in self.snvPositions.snvp_dict.keys():
+            for haplType in self.snvPositions.snvp_dict[chrom].keys():
+                for haplIdx in \
+                        range(len(self.snvPositions.snvp_dict
+                                  [chrom][haplType])):
+                    lstr = list(refPloidy[chrom][haplType][haplIdx])
                     for snvp in\
-                            self.snv_positions.snvp_dict[
-                                                chrom][hapl_type][hapl_idx]:
-                        lstr[snvp.position] = snvp.B_allele
+                            self.snvPositions.snvp_dict[
+                                                chrom][haplType][haplIdx]:
+                        lstr[snvp.position] = snvp.BAllele
 
-                    ref_ploidy[chrom][hapl_type][hapl_idx] = ''.join(lstr)
+                    refPloidy[chrom][haplType][haplIdx] = ''.join(lstr)
 
-        return ref_ploidy
+        return refPloidy
 
     def outputVartPosi(self, outfilePrefix):
-        # self.sv_positions[chroms[k]].append([
+        # self.svPositions[chroms[k]].append([
         # posi,
-        # self.variant_list[i][0],
-        # self.variant_list[i][1],
-        # self.variant_list[i][2],
-        # self.variant_list[i][-1]])
-        # temp_Node.variant_list.append(
-        # [variant_length, variant_copy_number,
-        # variant_genotype, variant_name])
+        # self.variantL[i][0],
+        # self.variantL[i][1],
+        # self.variantL[i][2],
+        # self.variantL[i][-1]])
+        # tempNode.variantL.append(
+        # [variantLength, variantCopyNumber,
+        # variantGenotype, variantName])
         outfileName = outfilePrefix+self.name+".SV.txt"
 
         with open(outfileName, 'w') as outfile:
-            for chrom in self.sv_positions.svp_dict.keys():
-                sv_items = self.sv_positions.svp_dict[chrom]
-                for sv_item in sv_items:
-                    outfile.write("chrom\t" + sv_item.info_str_title())
-                    outfile.write(chrom + "\t" + sv_item.info_str())
+            for chrom in self.svPositions.svp_dict.keys():
+                svItems = self.svPositions.svp_dict[chrom]
+                for svItem in svItems:
+                    outfile.write("chrom\t" + svItem.info_str_title())
+                    outfile.write(chrom + "\t" + svItem.info_str())
         pass
 
     def make(self, ref):
@@ -124,83 +123,82 @@ class VariantNode(NodeMixin):
         self._init_node(ref)
 
         # 第一步，生成ploidy 变异
-        if self.variant_type == "PLOIDY":
+        if self.variantType == "PLOIDY":
             self._make_ploidy()
         else:
 
             # 第一步，生成非结构变异，是否与结构变异出现重合现象？
             # 生成的位置包括： available中位置， insertion中的位置
 
-            ref_ploidy = self._ref_make_ploidy(copy.deepcopy(ref))
-            ref_ploidy_snv = self._ref_make_snv(ref_ploidy)
+            refPloidy = self._ref_make_ploidy(copy.deepcopy(ref))
+            refPloidySNV = self._ref_make_snv(refPloidy)
 
             # 第二步，生成结构变异, 此处是生成了ploidy的ref
-            self._make_sv(ref_ploidy_snv)
-            self._make_snv(ref_ploidy_snv)
+            self._make_sv(refPloidySNV)
+            self._make_snv(refPloidySNV)
 
     def _init_node(self, ref):
-        self.avail_position = self._getPrtAvailPst(ref)
-        self.sv_positions = self._getPrtSVPosis()
-        self.snv_positions = self._getPrtSNVPosis()
+        self.availPosition = self._getPrtAvailPst(ref)
+        self.svPositions = self._getPrtSVPosis()
+        self.snvPositions = self._getPrtSNVPosis()
         self.breakpoints = self._getPrtBreakpoints()
-        self.ploidy_status = self._getPrtPloidyStatus(ref)
-        self.noDEL_position = self._getPrtNBPPst(ref)
+        self.ploidyStatus = self._getPrtPloidyStatus(ref)
+        self.noDELPosition = self._getPrtNBPPst(ref)
 
     def _make_ploidy(self):
         # 此处对从父节点继承而来的变异信息进行染色体复制操作
         # 单体型需要用字典来实现ploidy变异
-        # 从父节点的breakpoints和sv_positions中生成
+        # 从父节点的breakpoints和svPositions中生成
 
-        # variant = [chrom, ploidy_number_before,
-                    # ploidy_number_after, ploidy_type_before,
-                    # ploidy_type_after]
+        # variant = [chrom, ploidyNumberBefore,
+                    # ploidyNumberAfter, ploidyTypeBefore,
+                    # ploidyTypeAfter]
 
-        for variant in self.variant_list:
+        for variant in self.variantL:
             chrom = variant[0]
-            # ploidy_number_before = variant[1]
-            # ploidy_number_after = variant[2]
-            ploidy_type_before = variant[3]
-            ploidy_type_after = variant[4]
-            ptc_before = Counter(ploidy_type_before)
-            ptc_after = Counter(ploidy_type_after)
+            # ploidyNumberBefore = variant[1]
+            # ploidyNumberAfter = variant[2]
+            ploidyTypeBefore = variant[3]
+            ploidyTypeAfter = variant[4]
+            ptcBefore = Counter(ploidyTypeBefore)
+            ptcAfter = Counter(ploidyTypeAfter)
 
-            for hapl in ptc_before.keys():
-                if hapl in ptc_after.keys():
-                    if ptc_before[hapl] > ptc_after[hapl]:
+            for hapl in ptcBefore.keys():
+                if hapl in ptcAfter.keys():
+                    if ptcBefore[hapl] > ptcAfter[hapl]:
                         # 此处可能不需要针对sv_position进行ploidy
                         # 操作，而只需要对breakpoint 进行操作
-                        number = ptc_before[hapl]-ptc_after[hapl]
-                        hapl_idxes = random.sample(
-                            range(ptc_before[hapl]), number)
-                        self.breakpoints.delete_ploidy(chrom, hapl, hapl_idxes)
-                        self.snv_positions.delete_ploidy(chrom, hapl,
-                                                         hapl_idxes)
+                        number = ptcBefore[hapl]-ptcAfter[hapl]
+                        haplIdxes = random.sample(
+                            range(ptcBefore[hapl]), number)
+                        self.breakpoints.delete_ploidy(chrom, hapl, haplIdxes)
+                        self.snvPositions.delete_ploidy(chrom, hapl, haplIdxes)
 
-                    elif ptc_before[hapl] < ptc_after[hapl]:
-                        number = ptc_after[hapl]-ptc_before[hapl]
-                        hapls = [random.choice(range(ptc_before[hapl])) for _ in
+                    elif ptcBefore[hapl] < ptcAfter[hapl]:
+                        number = ptcAfter[hapl]-ptcBefore[hapl]
+                        hapls = [random.choice(range(ptcBefore[hapl])) for _ in
                                  range(number)]
                         self.breakpoints.add_ploidy(chrom, hapl, hapls)
-                        self.snv_positions.add_ploidy(chrom, hapl, hapls)
+                        self.snvPositions.add_ploidy(chrom, hapl, hapls)
 
                     else:
                         continue
                 else:
-                    number = ptc_before[hapl]
-                    hapl_idxes = range(ptc_before[hapl])
-                    self.breakpoints.delete_ploidy(chrom, hapl, hapl_idxes)
-                    self.snv_positions.delete_ploidy(chrom, hapl, hapl_idxes)
+                    number = ptcBefore[hapl]
+                    haplIdxes = range(ptcBefore[hapl])
+                    self.breakpoints.delete_ploidy(chrom, hapl, haplIdxes)
+                    self.snvPositions.delete_ploidy(chrom, hapl, haplIdxes)
 
-        self.ploidy_status[chrom] = ploidy_type_after
+        self.ploidyStatus[chrom] = ploidyTypeAfter
         pass
 
     def _make_snv(self, ref):
-        # 从avail_position 中生成非重合变异，
+        # 从availPosition 中生成非重合变异，
         # 从sv_position和breakpoints的insertStr中生成重合的变异
         # 只有非重合变异可以生成纯合突变
 
-        snv_list = filter(lambda item: item[-1] == "SNV", self.variant_list)
-        for snv in snv_list:
+        snvList = filter(lambda item: item[-1] == "SNV", self.variantL)
+        for snv in snvList:
             chrom = snv[0]
             isHetero = snv[1]
             isOverlap = snv[2]
@@ -208,90 +206,90 @@ class VariantNode(NodeMixin):
 
             if isOverlap == "TRUE":
                 # only hetero
-                number_noDEL = number
-                number_bp = 0
+                numberNoDEL = number
+                numberBp = 0
                 noDELCNVpois = self._getNDCPs(chrom)
                 strBps = self._getStrBps(chrom)
 
                 if strBps is not None and len(noDELCNVpois) > 0:
-                    number_noDEL = int(number / 2)
-                    number_bp = number - number_noDEL
+                    numberNoDEL = int(number / 2)
+                    numberBp = number - numberNoDEL
                 if len(noDELCNVpois) == 0:
-                    number_noDEL = 0
-                    number_bp = number
+                    numberNoDEL = 0
+                    numberBp = number
                 if strBps is None:
-                    number_bp = 0
-                    number_noDEL = number
+                    numberBp = 0
+                    numberNoDEL = number
                 if strBps is None and len(noDELCNVpois) == 0:
-                    number_bp = 0
-                    number_noDEL = 0
+                    numberBp = 0
+                    numberNoDEL = 0
 
-                for i in range(number_bp):
+                for i in range(numberBp):
                     bp = random.sample(strBps, 1)[0]
                     position = random.sample(range(len(bp.insertStr)), 1)[0]
-                    bp_lstr = list(bp.insertStr)
-                    bp_lstr[position] = SNP(bp_lstr[position])
-                    bp.insertStr = ''.join(bp_lstr)
+                    bpLstr = list(bp.insertStr)
+                    bpLstr[position] = SNP(bpLstr[position])
+                    bp.insertStr = ''.join(bpLstr)
 
-                for i in range(number_noDEL):
+                for i in range(numberNoDEL):
 
                     noDELCNV = random.sample(noDELCNVpois, 1)[0]
                     length = noDELCNV.sv.length
-                    hapl_remain = noDELCNV.sv.hapl_remain
+                    haplRemain = noDELCNV.sv.haplRemain
                     position = noDELCNV.position\
                         + random.sample(range(length), 1)[0]
 
-                    temp_hapl_type = random.sample(hapl_remain.keys(), 1)[0]
-                    temp_hapl_index = random.sample(
-                        hapl_remain[temp_hapl_type], 1)[0]
-                    hapl_lstr = ref[chrom][temp_hapl_type][temp_hapl_index]
-                    B_allele = SNP(hapl_lstr[position])
+                    tempHaplType = random.sample(haplRemain.keys(), 1)[0]
+                    tempHaplIndex = random.sample(
+                        haplRemain[tempHaplType], 1)[0]
+                    haplLstr = ref[chrom][tempHaplType][tempHaplIndex]
+                    BAllele = SNP(haplLstr[position])
 
-                    self.snv_positions.addPosi(chrom, temp_hapl_type,
-                                               temp_hapl_index,
-                                               position, B_allele, isHetero,
+                    self.snvPositions.addPosi(chrom, tempHaplType,
+                                               tempHaplIndex,
+                                               position, BAllele, isHetero,
                                                isOverlap)
             else:
 
-                positions = self.avail_position.samplePosis(chrom, number)
+                positions = self.availPosition.samplePosis(chrom, number)
 
                 if isHetero == "TRUE":
-                    hapl_type = random.sample(ref[chrom].keys(), 1)[0]
+                    haplType = random.sample(ref[chrom].keys(), 1)[0]
 
                     for pi in positions:
-                        hapl_index = random.sample(
-                            range(len(ref[chrom][hapl_type])), 1)[0]
-                        hapl_lstr = ref[chrom][hapl_type][hapl_index]
-                        B_allele = SNP(hapl_lstr[pi])
+                        haplIndex = random.sample(
+                            range(len(ref[chrom][haplType])), 1)[0]
+                        haplLstr = ref[chrom][haplType][haplIndex]
+                        BAllele = SNP(haplLstr[pi])
 
-                        self.snv_positions.addPosi(chrom, hapl_type, hapl_index,
-                                                   pi, B_allele, isHetero,
+                        self.snvPositions.addPosi(chrom, haplType, haplIndex,
+                                                   pi, BAllele, isHetero,
                                                    isOverlap)
                 else:
                     for pi in positions:
-                        temp_hapl_type = random.sample(ref[chrom].keys(), 1)[0]
-                        temp_hapl_index = random.sample(
-                            range(len(ref[chrom][temp_hapl_type])), 1)[0]
-                        B_allele = SNP(
-                            ref[chrom][temp_hapl_type][temp_hapl_index][pi]
+                        tempHaplType = random.sample(ref[chrom].keys(), 1)[0]
+                        tempHaplIndex = random.sample(
+                            range(len(ref[chrom][tempHaplType])), 1)[0]
+                        BAllele = SNP(
+                            ref[chrom][tempHaplType][tempHaplIndex][pi]
                         )
-                        for hapl_type in ref[chrom].keys():
-                            for hapl_index in range(len(ref[chrom][hapl_type])):
-                                self.snv_positions.addPosi(chrom, hapl_type,
-                                                           hapl_index,
-                                                           pi, B_allele,
+                        for haplType in ref[chrom].keys():
+                            for haplIndex in range(len(ref[chrom][haplType])):
+                                self.snvPositions.addPosi(chrom, haplType,
+                                                           haplIndex,
+                                                           pi, BAllele,
                                                            isHetero, isOverlap)
         pass
 
     def _getStrBps(self, chrom):
         # 此处为了进行ploidy操作，bp结构为 {chr1:{'P':[[bp1],[bp2]], 'M':[[bp3]]}}
 
-        for hapl_type in self.breakpoints.breaks_list[chrom].keys():
-            for hapl_index in range(len(
-                    self.breakpoints.breaks_list[chrom][hapl_type])):
+        for haplType in self.breakpoints.breaks_list[chrom].keys():
+            for haplIndex in range(len(
+                    self.breakpoints.breaks_list[chrom][haplType])):
                 strBps = filter(lambda item: item.insertStr is not None,
                                 self.breakpoints.breaks_list
-                                [chrom][hapl_type][hapl_index])
+                                [chrom][haplType][haplIndex])
                 if len(strBps) > 1:
                     return strBps
 
@@ -300,133 +298,133 @@ class VariantNode(NodeMixin):
     def _getNDCPs(self, chrom):
         return filter(
             lambda item: item.sv_type == "CNV" and item.sv.genotype != "NONE",
-            self.sv_positions.svp_dict[chrom])
+            self.svPositions.svp_dict[chrom])
 
     def _make_sv(self, ref):
-        new_positions = self._generateNewPosition()
+        newPositions = self._generateNewPosition()
         # noBP remove deletion seg
-        self.breakpoints.generateBPs(new_positions, self.avail_position,
-                                     self.noDEL_position, ref,
-                                     self.ploidy_status)
+        self.breakpoints.generateBPs(newPositions, self.availPosition,
+                                     self.noDELPosition, ref,
+                                     self.ploidyStatus)
 
     def _generateNewPosition(self):
         clmin = constants.COMPLEXINDEL_LENGTH_MIN
         clmax = constants.COMPLEXINDEL_LENGTH_MAX
 
-        current_sv_positions = SV_positions()
+        currentSVPositions = SVPositions()
 
         # str_len=[len(ref[tmp][0]) for tmp in dic]
-        sv_list = filter(lambda item: item[-1] == "SV", self.variant_list)
+        svList = filter(lambda item: item[-1] == "SV", self.variantL)
 
-        for sv in sv_list:
+        for sv in svList:
             # 此处sv变异被按顺序分配到染色体上
             chrom = sv[0]
             length = sv[1]
-            variant_name = sv[-2]
+            variantName = sv[-2]
 
             while True:
                 count = 1
-                posi = self.avail_position.sample1posi(chrom)
+                posi = self.availPosition.sample1posi(chrom)
                 # 生成位置，以随机生成的第一个首字母为起始位置。
-                if variant_name == "INSERTION":
-                    isOverlap = self.avail_position.isOverlaped(chrom, posi,
+                if variantName == "INSERTION":
+                    isOverlap = self.availPosition.isOverlaped(chrom, posi,
                                                                 posi + 1)
                 else:
-                    isOverlap = self.avail_position.isOverlaped(chrom, posi,
+                    isOverlap = self.availPosition.isOverlaped(chrom, posi,
                                                                 posi + length)
 
                 if isOverlap:
                     # 此处需要在conf 中给定chrom, 因为不同的染色体的ploidy
                     # 不同，对应的变异的基因型也不同
-                    if variant_name == "INSERTION":
-                        self.avail_position.takePosi(chrom, posi, posi + 1)
+                    if variantName == "INSERTION":
+                        self.availPosition.takePosi(chrom, posi, posi + 1)
                     else:
-                        self.avail_position.takePosi(chrom, posi, posi + length)
+                        self.availPosition.takePosi(chrom, posi, posi + length)
 
-                    if variant_name == "CNV":
-                        copy_number = sv[2]
+                    if variantName == "CNV":
+                        copyNumber = sv[2]
                         genotype = sv[3]
 
-                        self.sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype,
-                            self.ploidy_status)
-                        current_sv_positions.add_posi_CNV(
-                            chrom, posi, length, copy_number, genotype,
-                            self.ploidy_status)
+                        self.svPositions.add_posi_CNV(
+                            chrom, posi, length, copyNumber, genotype,
+                            self.ploidyStatus)
+                        currentSVPositions.add_posi_CNV(
+                            chrom, posi, length, copyNumber, genotype,
+                            self.ploidyStatus)
 
-                    if variant_name == "INVERTION":
+                    if variantName == "INVERTION":
 
-                        hapl_type = sv[2]
-                        hapl_idx = sv[3]
-                        # ploidy_status = sv[4]
+                        haplType = sv[2]
+                        haplIdx = sv[3]
+                        # ploidyStatus = sv[4]
 
-                        self.sv_positions.add_posi_INVERTION(
-                            chrom, hapl_type, hapl_idx, posi, length)
-                        current_sv_positions.add_posi_INVERTION(
-                            chrom, hapl_type, hapl_idx, posi, length)
+                        self.svPositions.add_posi_INVERTION(
+                            chrom, haplType, haplIdx, posi, length)
+                        currentSVPositions.add_posi_INVERTION(
+                            chrom, haplType, haplIdx, posi, length)
 
-                    if variant_name == "TANDEMDUP":
+                    if variantName == "TANDEMDUP":
 
-                        hapl_type = sv[2]
-                        hapl_idx = sv[3]
+                        haplType = sv[2]
+                        haplIdx = sv[3]
                         times = sv[4]
-                        # ploidy_status = sv[5]
+                        # ploidyStatus = sv[5]
 
-                        self.sv_positions.add_posi_TANDEMDUP(
-                            chrom, hapl_type, hapl_idx, posi, length, times)
-                        current_sv_positions.add_posi_TANDEMDUP(
-                            chrom, hapl_type, hapl_idx, posi, length, times)
+                        self.svPositions.add_posi_TANDEMDUP(
+                            chrom, haplType, haplIdx, posi, length, times)
+                        currentSVPositions.add_posi_TANDEMDUP(
+                            chrom, haplType, haplIdx, posi, length, times)
 
-                    if variant_name == "DELETION":
+                    if variantName == "DELETION":
 
-                        hapl_type = sv[2]
-                        hapl_idx = sv[3]
-                        # ploidy_status = sv[4]
+                        haplType = sv[2]
+                        haplIdx = sv[3]
+                        # ploidyStatus = sv[4]
 
-                        self.sv_positions.add_posi_DELETION(
-                            chrom, hapl_type, hapl_idx, posi, length)
-                        current_sv_positions.add_posi_DELETION(
-                            chrom, hapl_type, hapl_idx, posi, length)
+                        self.svPositions.add_posi_DELETION(
+                            chrom, haplType, haplIdx, posi, length)
+                        currentSVPositions.add_posi_DELETION(
+                            chrom, haplType, haplIdx, posi, length)
 
-                    if variant_name == "COMPLEXINDEL":
+                    if variantName == "COMPLEXINDEL":
 
-                        hapl_type = sv[2]
-                        hapl_idx = sv[3]
-                        # ploidy_status = sv[4]
+                        haplType = sv[2]
+                        haplIdx = sv[3]
+                        # ploidyStatus = sv[4]
                         length1 = random.randint(clmin, clmax)
                         length2 = random.randint(clmin, clmax)
 
-                        self.sv_positions.add_posi_COMPLEXINDEL(
-                            chrom, hapl_type, hapl_idx, posi, length1, length2)
-                        current_sv_positions.add_posi_COMPLEXINDEL(
-                            chrom, hapl_type, hapl_idx, posi, length1, length2)
+                        self.svPositions.add_posi_COMPLEXINDEL(
+                            chrom, haplType, haplIdx, posi, length1, length2)
+                        currentSVPositions.add_posi_COMPLEXINDEL(
+                            chrom, haplType, haplIdx, posi, length1, length2)
 
-                    if variant_name == "INSERTION":
+                    if variantName == "INSERTION":
 
-                        hapl_type = sv[2]
-                        hapl_idx = sv[3]
-                        # ploidy_status = sv[4]
+                        haplType = sv[2]
+                        haplIdx = sv[3]
+                        # ploidyStatus = sv[4]
 
-                        self.sv_positions.add_posi_INSERTION(
-                            chrom, hapl_type, hapl_idx, posi, length)
-                        current_sv_positions.add_posi_INSERTION(
-                            chrom, hapl_type, hapl_idx, posi, length)
+                        self.svPositions.add_posi_INSERTION(
+                            chrom, haplType, haplIdx, posi, length)
+                        currentSVPositions.add_posi_INSERTION(
+                            chrom, haplType, haplIdx, posi, length)
 
-                    if variant_name == "TRANSLOCATION":
-                        hapl_type_from = sv[2]
-                        hapl_idx_from = int(sv[3])
-                        chrom_to = sv[4]
-                        hapl_type_to = sv[5]
-                        hapl_idx_to = int(sv[6])
+                    if variantName == "TRANSLOCATION":
+                        haplTypeFrom = sv[2]
+                        haplIdxFrom = int(sv[3])
+                        chromTo = sv[4]
+                        haplTypeTo = sv[5]
+                        haplIdxTo = int(sv[6])
                         # ploidy_genotype = sv[7]
 
-                        self.sv_positions.add_posi_TRANSLOCATION(
-                            chrom, posi, hapl_type_from, hapl_idx_from,
-                            chrom_to, hapl_type_to, hapl_idx_to, length)
+                        self.svPositions.add_posi_TRANSLOCATION(
+                            chrom, posi, haplTypeFrom, haplIdxFrom,
+                            chromTo, haplTypeTo, haplIdxTo, length)
 
-                        current_sv_positions.add_posi_TRANSLOCATION(
-                            chrom, posi, hapl_type_from, hapl_idx_from,
-                            chrom_to, hapl_type_to, hapl_idx_to, length)
+                        currentSVPositions.add_posi_TRANSLOCATION(
+                            chrom, posi, haplTypeFrom, haplIdxFrom,
+                            chromTo, haplTypeTo, haplIdxTo, length)
                     break
                 else:
                     count = count+1
@@ -435,10 +433,10 @@ class VariantNode(NodeMixin):
                     else:
                         break
 
-        self.sv_positions.sorted()
-        current_sv_positions.sorted()
+        self.svPositions.sorted()
+        currentSVPositions.sorted()
 
-        return current_sv_positions
+        return currentSVPositions
 
     def _getPrtBreakpoints(self):
         if self._isRoot():
@@ -449,33 +447,33 @@ class VariantNode(NodeMixin):
 
     def _getPrtSNVPosis(self):
         if self._isRoot():
-            return SNV_positions()
+            return SNVPositions()
         else:
-            return copy.deepcopy(self.parent.snv_positions)
+            return copy.deepcopy(self.parent.snvPositions)
         pass
 
     def _getPrtSVPosis(self):
         if self._isRoot():
-            return SV_positions()
+            return SVPositions()
         else:
-            return copy.deepcopy(self.parent.sv_positions)
+            return copy.deepcopy(self.parent.svPositions)
         pass
 
     def _getPrtAvailPst(self, ref):
         if self._isRoot():
-            avail_position = GenomeRange()
-            avail_position.init_from_ref(ref)
-            return avail_position
+            availPosition = GenomeRange()
+            availPosition.init_from_ref(ref)
+            return availPosition
         else:
-            return copy.deepcopy(self.parent.avail_position)
+            return copy.deepcopy(self.parent.availPosition)
 
     def _getPrtNBPPst(self, ref):
         if self._isRoot():
-            avail_position = GenomeRange()
-            avail_position.init_none(ref)
-            return avail_position
+            availPosition = GenomeRange()
+            availPosition.init_none(ref)
+            return availPosition
         else:
-            return copy.deepcopy(self.parent.noDEL_position)
+            return copy.deepcopy(self.parent.noDELPosition)
 
     def _getPrtPloidyStatus(self, ref):
         if self._isRoot():
@@ -484,7 +482,7 @@ class VariantNode(NodeMixin):
                 ps[chrom] = "PM"
             return ps
         else:
-            return copy.deepcopy(self.parent.ploidy_status)
+            return copy.deepcopy(self.parent.ploidyStatus)
 
     def _isRoot(self):
         if self.parent is None:
@@ -493,12 +491,12 @@ class VariantNode(NodeMixin):
             return False
 
 
-class VariantTree(object):
+class GenomeTree(object):
 
     """变异树"""
 
     def __init__(self, configFileName):
-        self.variant_tree = self._read_config(configFileName)
+        self.genomeNodes = self._read_config(configFileName)
 
     def _getParentName(self, name):
         """生成父节点的名称
@@ -514,216 +512,216 @@ class VariantTree(object):
         :returns: 父节点名称
 
         """
-        name_list = name.rsplit(".", 1)
-        if len(name_list) == 1:
-            parent_name = None
+        nameList = name.rsplit(".", 1)
+        if len(nameList) == 1:
+            parentName = None
         else:
-            parent_name = name_list[0]
+            parentName = nameList[0]
 
-        return parent_name
+        return parentName
 
     def _read_config(self, fileName):
-        variant_nodes = {}
+        genomeNodes = {}
 
         with open(fileName) as infile:
             for line in sorted(infile):
                 # 这里按顺序生成
                 if not line.startswith('#'):
-                    list_line = line.rstrip().split('\t')
+                    listLine = line.rstrip().split('\t')
                 else:
                     continue
 
-                subclonal_name = list_line[0]
-                variant_type = list_line[1]
+                subclonalName = listLine[0]
+                variantType = listLine[1]
 
-                if variant_type == "SV":
-                    variant_name = list_line[2]
+                if variantType == "SV":
+                    variantName = listLine[2]
 
-                    if variant_name == "CNV":
-                        chrom = list_line[3]
-                        variant_length = int(list_line[4])
-                        variant_copy_number = int(list_line[5])
-                        variant_genotype = list_line[6]
-                        number = int(list_line[7])
+                    if variantName == "CNV":
+                        chrom = listLine[3]
+                        variantLength = int(listLine[4])
+                        variantCopyNumber = int(listLine[5])
+                        variantGenotype = listLine[6]
+                        number = int(listLine[7])
                         variant = [
                             chrom,
-                            variant_length,
-                            variant_copy_number,
-                            variant_genotype,
-                            variant_name,
-                            variant_type]
+                            variantLength,
+                            variantCopyNumber,
+                            variantGenotype,
+                            variantName,
+                            variantType]
                         self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
+                            variant, number, subclonalName, genomeNodes)
 
-                    elif variant_name == "INVERTION":
-                        chrom = list_line[3]
-                        hapl_type = list_line[4]
-                        hapl_idx = int(list_line[5])
-                        variant_length = int(list_line[6])
-                        number = int(list_line[7])
+                    elif variantName == "INVERTION":
+                        chrom = listLine[3]
+                        haplType = listLine[4]
+                        haplIdx = int(listLine[5])
+                        variantLength = int(listLine[6])
+                        number = int(listLine[7])
 
                         variant = [
                             chrom,
-                            variant_length,
-                            hapl_type,
-                            hapl_idx,
-                            variant_name,
-                            variant_type]
+                            variantLength,
+                            haplType,
+                            haplIdx,
+                            variantName,
+                            variantType]
 
                         self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
+                            variant, number, subclonalName, genomeNodes)
 
-                    elif variant_name == "TANDEMDUP":
-                        chrom = list_line[3]
-                        hapl_type = list_line[4]
-                        hapl_idx = int(list_line[5])
-                        variant_length = int(list_line[6])
-                        times = int(list_line[7])
-                        number = int(list_line[8])
+                    elif variantName == "TANDEMDUP":
+                        chrom = listLine[3]
+                        haplType = listLine[4]
+                        haplIdx = int(listLine[5])
+                        variantLength = int(listLine[6])
+                        times = int(listLine[7])
+                        number = int(listLine[8])
 
                         variant = [
                             chrom,
-                            variant_length,
-                            hapl_type,
-                            hapl_idx,
+                            variantLength,
+                            haplType,
+                            haplIdx,
                             times,
-                            variant_name,
-                            variant_type]
+                            variantName,
+                            variantType]
 
                         self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
+                            variant, number, subclonalName, genomeNodes)
 
-                    elif variant_name == "INSERTION":
-                        chrom = list_line[3]
-                        hapl_type = list_line[4]
-                        hapl_idx = int(list_line[5])
-                        variant_length = int(list_line[6])
-                        number = int(list_line[7])
+                    elif variantName == "INSERTION":
+                        chrom = listLine[3]
+                        haplType = listLine[4]
+                        haplIdx = int(listLine[5])
+                        variantLength = int(listLine[6])
+                        number = int(listLine[7])
 
                         variant = [
                             chrom,
-                            variant_length,
-                            hapl_type,
-                            hapl_idx,
-                            variant_name,
-                            variant_type]
+                            variantLength,
+                            haplType,
+                            haplIdx,
+                            variantName,
+                            variantType]
 
                         self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
+                            variant, number, subclonalName, genomeNodes)
 
-                    elif variant_name == "DELETION":
-                        chrom = list_line[3]
-                        hapl_type = list_line[4]
-                        hapl_idx = int(list_line[5])
-                        variant_length = int(list_line[6])
-                        number = int(list_line[7])
+                    elif variantName == "DELETION":
+                        chrom = listLine[3]
+                        haplType = listLine[4]
+                        haplIdx = int(listLine[5])
+                        variantLength = int(listLine[6])
+                        number = int(listLine[7])
 
                         variant = [
                             chrom,
-                            variant_length,
-                            hapl_type,
-                            hapl_idx,
-                            variant_name,
-                            variant_type]
+                            variantLength,
+                            haplType,
+                            haplIdx,
+                            variantName,
+                            variantType]
 
                         self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
+                            variant, number, subclonalName, genomeNodes)
 
-                    elif variant_name == "COMPLEXINDEL":
-                        chrom = list_line[3]
-                        hapl_type = list_line[4]
-                        hapl_idx = int(list_line[5])
-                        number = int(list_line[6])
+                    elif variantName == "COMPLEXINDEL":
+                        chrom = listLine[3]
+                        haplType = listLine[4]
+                        haplIdx = int(listLine[5])
+                        number = int(listLine[6])
 
                         variant = [
                             chrom,
                             -1,
-                            hapl_type,
-                            hapl_idx,
-                            variant_name,
-                            variant_type]
+                            haplType,
+                            haplIdx,
+                            variantName,
+                            variantType]
 
                         self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
+                            variant, number, subclonalName, genomeNodes)
 
-                    elif variant_name == "TRANSLOCATION":
-                        chrom_from = list_line[3]
-                        hapl_type_from = list_line[4]
-                        hapl_idx_from = int(list_line[5])
-                        variant_length = int(list_line[6])
-                        chrom_to = list_line[7]
-                        hapl_type_to = list_line[8]
-                        hapl_idx_to = int(list_line[9])
-                        number = int(list_line[10])
+                    elif variantName == "TRANSLOCATION":
+                        chrom_from = listLine[3]
+                        haplTypeFrom = listLine[4]
+                        haplIdxFrom = int(listLine[5])
+                        variantLength = int(listLine[6])
+                        chromTo = listLine[7]
+                        haplTypeTo = listLine[8]
+                        haplIdxTo = int(listLine[9])
+                        number = int(listLine[10])
 
                         variant = [
                             chrom_from,
-                            variant_length,
-                            hapl_type_from,
-                            hapl_idx_from,
-                            chrom_to,
-                            hapl_type_to,
-                            hapl_idx_to,
-                            variant_name,
-                            variant_type]
+                            variantLength,
+                            haplTypeFrom,
+                            haplIdxFrom,
+                            chromTo,
+                            haplTypeTo,
+                            haplIdxTo,
+                            variantName,
+                            variantType]
 
                         self._add2node(
-                            variant, number, subclonal_name, variant_nodes)
+                            variant, number, subclonalName, genomeNodes)
                     else:
                         pass
-                elif variant_type == "PLOIDY":
-                    chrom = list_line[2]
-                    ploidy_number_before = int(list_line[3])
-                    ploidy_number_after = int(list_line[4])
-                    ploidy_type_before = list_line[5]
-                    ploidy_type_after = list_line[6]
-                    variant = [chrom, ploidy_number_before,
-                               ploidy_number_after, ploidy_type_before,
-                               ploidy_type_after, variant_type]
+                elif variantType == "PLOIDY":
+                    chrom = listLine[2]
+                    ploidyNumberBefore = int(listLine[3])
+                    ploidyNumberAfter = int(listLine[4])
+                    ploidyTypeBefore = listLine[5]
+                    ploidyTypeAfter = listLine[6]
+                    variant = [chrom, ploidyNumberBefore,
+                               ploidyNumberAfter, ploidyTypeBefore,
+                               ploidyTypeAfter, variantType]
 
                     self._add2node(
-                        variant, 1, subclonal_name, variant_nodes)
+                        variant, 1, subclonalName, genomeNodes)
 
-                elif variant_type == "SNV":
-                    chrom = list_line[2]
-                    isHetero = list_line[3]
-                    isOverlap = list_line[4]
-                    number = int(list_line[6])
+                elif variantType == "SNV":
+                    chrom = listLine[2]
+                    isHetero = listLine[3]
+                    isOverlap = listLine[4]
+                    number = int(listLine[6])
                     variant = [chrom, isHetero, isOverlap, number,
-                               variant_type]
+                               variantType]
                     self._add2node(
-                        variant, 1, subclonal_name, variant_nodes)
+                        variant, 1, subclonalName, genomeNodes)
 
-        self._linkNode(variant_nodes)
+        self._linkNode(genomeNodes)
 
-        return variant_nodes
+        return genomeNodes
 
-    def _add2node(self, variant, number, subclonal_name, variant_nodes):
-        if subclonal_name not in variant_nodes.keys():
-            temp_Node = VariantNode(subclonal_name,
-                                    variant_type=variant[-1])
-            variant_nodes[subclonal_name] = temp_Node
+    def _add2node(self, variant, number, subclonalName, genomeNodes):
+        if subclonalName not in genomeNodes.keys():
+            tempNode = GenomeNode(subclonalName,
+                                    variantType=variant[-1])
+            genomeNodes[subclonalName] = tempNode
         else:
-            temp_Node = variant_nodes[subclonal_name]
+            tempNode = genomeNodes[subclonalName]
 
         for i in range(number):
-            temp_Node.variant_list = temp_Node.variant_list + [variant]
+            tempNode.variantL = tempNode.variantL + [variant]
 
-    def _linkNode(self, variant_nodes):
-        if "1" not in variant_nodes.keys():
-            variant_nodes["1"] = VariantNode("1")
+    def _linkNode(self, genomeNodes):
+        if "1" not in genomeNodes.keys():
+            genomeNodes["1"] = GenomeNode("1")
 
-        for node_name in variant_nodes.keys():
-            node_parent_name = self._getParentName(node_name)
-            if node_parent_name is not None:
+        for nodeName in genomeNodes.keys():
+            nodeParentName = self._getParentName(nodeName)
+            if nodeParentName is not None:
                 try:
-                    variant_nodes[node_name].parent =\
-                        variant_nodes[node_parent_name]
+                    genomeNodes[nodeName].parent =\
+                        genomeNodes[nodeParentName]
                 except KeyError:
                     print "Node parent error!"
 
     def makeSV(self, ref):
-        self._make(self.variant_tree['1'], ref)
+        self._make(self.genomeNodes['1'], ref)
 
     def _make(self, node, ref):
         node.make(ref)
@@ -736,10 +734,10 @@ def main():
     :returns: TODO
 
     """
-    # variant_nodes = read_config("../config/sv_config_test")
-    # print RenderTree(variant_nodes['1'])
-    # for pre, _, node in RenderTree(variant_nodes['1']):
-    #     print node.name, node.variant_list
+    # genomeNodes = read_config("../config/sv_config_test")
+    # print RenderTree(genomeNodes['1'])
+    # for pre, _, node in RenderTree(genomeNodes['1']):
+    #     print node.name, node.variantL
 
 
 if __name__ == "__main__":
