@@ -25,10 +25,16 @@ def compute_range(ref):
         for item in nBaseIndexes:
             start = item.start(0)
             end = item.end(0)
-            if not start - 20 <= 0:
-                start = start - 20
-            if not end + 20 >= len(ref[chrom]['P'][0]):
-                end = end + 20
+            print "____>>> compute: start____"
+            print start, ref[chrom]['P'][0][start - 1]
+            print "_________end compute:start______________"
+            print "____>>> compute: end____"
+            print end, ref[chrom]['P'][0][end]
+            print "_________end compute:end______________"
+            # if not start - 20 <= 0:
+                # start = start - 20
+            # if not end + 20 >= len(ref[chrom]['P'][0]):
+                # end = end + 20
             itemRange = np.arange(start, end)
             avaiRange = np.delete(avaiRange, itemRange)
 
@@ -238,3 +244,10 @@ def SNP(str1):
         else:
             continue
     return tmp
+
+def main():
+    print reference("/media/f/reference/output_ploidy.fa")
+    print compute_range(reference("/media/f/reference/output_ploidy.fa"))
+
+if __name__ == "__main__":
+    main()

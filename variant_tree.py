@@ -79,14 +79,14 @@ class GenomeNode(NodeMixin):
 
     def _ref_make_snv(self, refPloidy):
         # 与breakpoint结构一致
-        for chrom in self.snvPositions.snvp_dict.keys():
-            for haplType in self.snvPositions.snvp_dict[chrom].keys():
+        for chrom in self.snvPositions.snvpDict.keys():
+            for haplType in self.snvPositions.snvpDict[chrom].keys():
                 for haplIdx in \
-                        range(len(self.snvPositions.snvp_dict
+                        range(len(self.snvPositions.snvpDict
                                   [chrom][haplType])):
                     lstr = list(refPloidy[chrom][haplType][haplIdx])
                     for snvp in\
-                            self.snvPositions.snvp_dict[
+                            self.snvPositions.snvpDict[
                                                 chrom][haplType][haplIdx]:
                         lstr[snvp.position] = snvp.BAllele
 
@@ -107,8 +107,8 @@ class GenomeNode(NodeMixin):
         outfileName = outfilePrefix+self.name+".SV.txt"
 
         with open(outfileName, 'w') as outfile:
-            for chrom in self.svPositions.svp_dict.keys():
-                svItems = self.svPositions.svp_dict[chrom]
+            for chrom in self.svPositions.svpDict.keys():
+                svItems = self.svPositions.svpDict[chrom]
                 for svItem in svItems:
                     outfile.write("chrom\t" + svItem.info_str_title())
                     outfile.write(chrom + "\t" + svItem.info_str())
@@ -284,11 +284,11 @@ class GenomeNode(NodeMixin):
     def _getStrBps(self, chrom):
         # 此处为了进行ploidy操作，bp结构为 {chr1:{'P':[[bp1],[bp2]], 'M':[[bp3]]}}
 
-        for haplType in self.breakpoints.breaks_list[chrom].keys():
+        for haplType in self.breakpoints.breaksList[chrom].keys():
             for haplIndex in range(len(
-                    self.breakpoints.breaks_list[chrom][haplType])):
+                    self.breakpoints.breaksList[chrom][haplType])):
                 strBps = filter(lambda item: item.insertStr is not None,
-                                self.breakpoints.breaks_list
+                                self.breakpoints.breaksList
                                 [chrom][haplType][haplIndex])
                 if len(strBps) > 1:
                     return strBps
@@ -297,15 +297,22 @@ class GenomeNode(NodeMixin):
 
     def _getNDCPs(self, chrom):
         return filter(
-            lambda item: item.sv_type == "CNV" and item.sv.genotype != "NONE",
-            self.svPositions.svp_dict[chrom])
+            lambda item: item.svType == "CNV" and item.sv.genotype != "NONE",
+            self.svPositions.svpDict[chrom])
 
     def _make_sv(self, ref):
         newPositions = self._generateNewPosition()
         # noBP remove deletion seg
+
+        # 此处对只断点内部所复制的字符串进行操作，且断点内部的字符串是由父节点生
+        # 成
+        # 此处应该生成新位置，但不生成新断点
+        self.breakpoints.generateOverlappedCNV(newPositions)
+
         self.breakpoints.generateBPs(newPositions, self.availPosition,
                                      self.noDELPosition, ref,
                                      self.ploidyStatus)
+
 
     def _generateNewPosition(self):
         clmin = constants.COMPLEXINDEL_LENGTH_MIN
@@ -321,6 +328,22 @@ class GenomeNode(NodeMixin):
             chrom = sv[0]
             length = sv[1]
             variantName = sv[-2]
+
+
+            # 此处添加重叠CNV变异
+            if variantName == "OVERLAPPEDCNV":
+                position = sv[2]
+                inPositionStart = sv[3]
+                inPositionEnd = sv[4]
+                haplType = sv[5]
+                haplIdx = sv[6]
+                copyAddedNumber = sv[7]
+
+                self.svPositions.add_posi_OVERLAPPEDCNV(
+                    chrom, position, inPositionStart, inPositionEnd, haplType, haplIdx, length, copyAddedNumber)
+                currentSVPositions.add_posi_OVERLAPPEDCNV(
+                    chrom, position, inPositionStart, inPositionEnd, haplType, haplIdx, length, copyAddedNumber)
+                continue
 
             while True:
                 count = 1
@@ -428,7 +451,7 @@ class GenomeNode(NodeMixin):
                     break
                 else:
                     count = count+1
-                    if count < 20:
+                    if count < 200:
                         continue
                     else:
                         break
@@ -645,7 +668,7 @@ class GenomeTree(object):
                             variant, number, subclonalName, genomeNodes)
 
                     elif variantName == "TRANSLOCATION":
-                        chrom_from = listLine[3]
+                        chrom = listLine[3]
                         haplTypeFrom = listLine[4]
                         haplIdxFrom = int(listLine[5])
                         variantLength = int(listLine[6])
@@ -655,7 +678,7 @@ class GenomeTree(object):
                         number = int(listLine[10])
 
                         variant = [
-                            chrom_from,
+                            chrom,
                             variantLength,
                             haplTypeFrom,
                             haplIdxFrom,
@@ -667,8 +690,36 @@ class GenomeTree(object):
 
                         self._add2node(
                             variant, number, subclonalName, genomeNodes)
+
+                    elif variantName == "OVERLAPPEDCNV":
+                        # chrom, position, haplType, haplIdx, length, copyAddedNumber
+                        chrom = listLine[3]
+                        position = int(listLine[4])
+                        inPositionStart = int(listLine[4])
+                        inPositionEnd = int(listLine[5])
+                        haplType = listLine[6]
+                        haplIdx = int(listLine[7])
+                        length = int(listLine[8])
+                        copyAddedNumber = int(listLine[9])
+
+                        variant = [
+                            chrom,
+                            length,
+                            position,
+                            inPositionStart,
+                            inPositionEnd,
+                            haplType,
+                            haplIdx,
+                            copyAddedNumber,
+                            variantName,
+                            variantType]
+
+                        self._add2node(
+                            variant, number, subclonalName, genomeNodes)
+
                     else:
                         pass
+
                 elif variantType == "PLOIDY":
                     chrom = listLine[2]
                     ploidyNumberBefore = int(listLine[3])

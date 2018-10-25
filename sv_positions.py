@@ -158,7 +158,7 @@ class SVPositions:
     def add_posi_TRANSLOCATION(
             self,
             chrF_from,
-            position_from,
+            positionFrom,
             haplTypeFrom,
             haplIdxFrom,
             chromTo,
@@ -168,7 +168,7 @@ class SVPositions:
 
         tempSVP = SVP()
         tempSVP.svType = "TRANSLOCATION"
-        tempSVP.position = position_from
+        tempSVP.position = positionFrom
 
         tempSVP.sv = TRANSLOCATION()
 
@@ -182,8 +182,59 @@ class SVPositions:
 
         self._add_svp(chromFrom, tempSVP)
 
-    # 此处似乎不需要
-    # def add_ploidy(self, chrom, hapl, number):
+    def add_posi_RTRANSLOCATION(self,
+                                chromFrom,
+                                haplTypeFrom,
+                                haplIdxFrom,
+                                positionFrom,
+                                chromTo,
+                                haplTypeTo,
+                                haplIdxTo,
+                                positionTo):
+        tempSVP = SVP()
+        tempSVP.svType = "RTRANSLOCATION"
+        tempSVP.position = positionFrom
+
+        tempSVP.sv = RTRANSLOCATION()
+
+        tempSVP.sv.chromFrom = chromFrom
+        tempSVP.sv.haplTypeFrom = haplTypeFrom
+        tempSVP.sv.haplIdxFrom = haplIdxFrom
+        tempSVP.sv.positionFrom = positionFrom
+
+        tempSVP.sv.chromTo = chromTo
+        tempSVP.sv.haplTypeTo = haplTypeTo
+        tempSVP.sv.haplIdxTo = haplIdxTo
+        tempSVP.sv.positionTo = positionTo
+
+        self._add_svp(chromFrom, tempSVP)
+        self._add_svp(chromTo, tempSVP)
+
+
+    def add_posi_OVERLAPPEDCNV(self,
+                               chrom,
+                               position,
+                               inPositionStart,
+                               inPositionEnd,
+                               haplType,
+                               haplIdx,
+                               length,
+                               copyAddedNumber
+                               ):
+        tempSVP = SVP()
+        tempSVP.svType = "OVERLAPPEDCNV"
+        tempSVP.position = position
+
+        tempSVP.sv = OVERLAPPEDCNV()
+        tempSVP.sv.chrom = chrom
+        tempSVP.sv.inPositionStart = inPositionStart
+        tempSVP.sv.inPositionEnd = inPositionEnd
+        tempSVP.sv.haplType = haplType
+        tempSVP.sv.haplIdx = haplIdx
+        tempSVP.sv.length = length
+        tempSVP.sv.copyAddedNumber = 0
+
+        self._add_svp(chrom, tempSVP)
 
     def _add_svp(self, chrom, svp):
         if chrom not in self.svpDict.keys():

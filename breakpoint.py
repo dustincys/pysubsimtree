@@ -98,6 +98,21 @@ class BreakPoints():
             for i in range(len(self.breaksList[chrom][hapl]))
             if i not in hapl_idxes]
 
+    def generateOverlappedCNV(self, variantPositions):
+        for chrom in variantPositions.svpDict.keys():
+            vpsOCNV = filter(lambda item: item.sv_type == "OVERLAPPEDCNV",
+                             variantPositions.svpDict[chrom])
+            for vp in vpsOCNV:
+                if not self._has(chrom, vp.haplType, vp.haplIdx):
+                    continue
+                targetbp = filter(lambda item: item.position == vp.position,\
+                                  self.breaksList[chrom][haplType][haplIdx])[0]
+                targetbp.insertStr = targetbp.insertStr[0:vp.inPositionStart] +\
+                    targetbp.insertStr[vp.inPositionStart:vp.inPositionEnd] *\
+                    ( 1+vp.copyAddedNumber) + \
+                    targetbp.insertStr[vp.inPositionEnd:-1]
+
+
     def generateBPs(self, variantPositions, availPosition, noDELPosition,
                     ref, ploidyStatus):
 
@@ -172,6 +187,9 @@ class BreakPoints():
             bp.name = "INSERTION"
             bp.insertStr = ref[chrom][htf][hif][position-1: position+length]
             self._breakAppend(ploidyStatus, chrom, htt, hit, bp)
+
+
+
 
     def _generateInvsBPs(self, chrom, vps, ploidyStatus, ref):
         for vp in vps:
@@ -353,6 +371,15 @@ class BreakPoints():
                         invStart = False
 
         return hapStr
+
+    def generateOverlappedCNV(self):
+        """TODO: Docstring for function.
+
+        :arg1: TODO
+        :returns: TODO
+
+        """
+        pass
 
     def _getRandomPosi(self, chrom, availPosition):
         pois = -1
